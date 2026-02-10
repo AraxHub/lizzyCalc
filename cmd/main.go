@@ -71,13 +71,13 @@ func saveOperation(db *sql.DB, req Request, msg string, result float64) error {
 		INSERT INTO operations (number1, number2, operation, result, message, timestamp)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id`
-	
+
 	var id int
 	err := db.QueryRow(query, req.Number1, req.Number2, req.Operation, result, msg, time.Now()).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("ошибка сохранения операции: %w", err)
 	}
-	
+
 	log.Printf("Операция сохранена в БД с ID: %d\n", id)
 	return nil
 }
@@ -115,7 +115,7 @@ func getHistory(db *sql.DB) ([]Operation, error) {
 // connectDB подключается к базе данных PostgreSQL
 func connectDB() (*sql.DB, error) {
 	connStr := "host=localhost port=5433 user=postgres password=postgres dbname=lizzycalc sslmode=disable"
-	
+
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка подключения к БД: %w", err)
@@ -174,51 +174,51 @@ func main() {
 	if err := saveOperation(db, req1, msg, result); err != nil {
 		log.Printf(errSaveOperation, err)
 	}
+	/*
+		req2 := Request{Number1: 20, Number2: 8, Operation: "-"}
+		msg, result = calculateUsecase(req2)
+		if msg == success {
+			log.Printf("%.2f %s %.2f = %.2f (%s)\n", req2.Number1, req2.Operation, req2.Number2, result, msg)
+		} else {
+			log.Printf("Ошибка: %s\n", msg)
+		}
+		if err := saveOperation(db, req2, msg, result); err != nil {
+			log.Printf(errSaveOperation, err)
+		}
 
-	req2 := Request{Number1: 20, Number2: 8, Operation: "-"}
-	msg, result = calculateUsecase(req2)
-	if msg == success {
-		log.Printf("%.2f %s %.2f = %.2f (%s)\n", req2.Number1, req2.Operation, req2.Number2, result, msg)
-	} else {
-		log.Printf("Ошибка: %s\n", msg)
-	}
-	if err := saveOperation(db, req2, msg, result); err != nil {
-		log.Printf(errSaveOperation, err)
-	}
+		req3 := Request{Number1: 7, Number2: 3, Operation: "*"}
+		msg, result = calculateUsecase(req3)
+		if msg == success {
+			log.Printf("%.2f %s %.2f = %.2f (%s)\n", req3.Number1, req3.Operation, req3.Number2, result, msg)
+		} else {
+			log.Printf("Ошибка: %s\n", msg)
+		}
+		if err := saveOperation(db, req3, msg, result); err != nil {
+			log.Printf(errSaveOperation, err)
+		}
 
-	req3 := Request{Number1: 7, Number2: 3, Operation: "*"}
-	msg, result = calculateUsecase(req3)
-	if msg == success {
-		log.Printf("%.2f %s %.2f = %.2f (%s)\n", req3.Number1, req3.Operation, req3.Number2, result, msg)
-	} else {
-		log.Printf("Ошибка: %s\n", msg)
-	}
-	if err := saveOperation(db, req3, msg, result); err != nil {
-		log.Printf(errSaveOperation, err)
-	}
+		req4 := Request{Number1: 15, Number2: 3, Operation: "/"}
+		msg, result = calculateUsecase(req4)
+		if msg == success {
+			log.Printf("%.2f %s %.2f = %.2f (%s)\n", req4.Number1, req4.Operation, req4.Number2, result, msg)
+		} else {
+			log.Printf("Ошибка: %s\n", msg)
+		}
+		if err := saveOperation(db, req4, msg, result); err != nil {
+			log.Printf(errSaveOperation, err)
+		}
 
-	req4 := Request{Number1: 15, Number2: 3, Operation: "/"}
-	msg, result = calculateUsecase(req4)
-	if msg == success {
-		log.Printf("%.2f %s %.2f = %.2f (%s)\n", req4.Number1, req4.Operation, req4.Number2, result, msg)
-	} else {
-		log.Printf("Ошибка: %s\n", msg)
-	}
-	if err := saveOperation(db, req4, msg, result); err != nil {
-		log.Printf(errSaveOperation, err)
-	}
-
-	req5 := Request{Number1: 10, Number2: 0, Operation: "/"}
-	msg, result = calculateUsecase(req5)
-	if msg == success {
-		log.Printf("%.2f %s %.2f = %.2f (%s)\n", req5.Number1, req5.Operation, req5.Number2, result, msg)
-	} else {
-		log.Printf("Ошибка: %s\n", msg)
-	}
-	if err := saveOperation(db, req5, msg, result); err != nil {
-		log.Printf(errSaveOperation, err)
-	}
-
+		req5 := Request{Number1: 10, Number2: 0, Operation: "/"}
+		msg, result = calculateUsecase(req5)
+		if msg == success {
+			log.Printf("%.2f %s %.2f = %.2f (%s)\n", req5.Number1, req5.Operation, req5.Number2, result, msg)
+		} else {
+			log.Printf("Ошибка: %s\n", msg)
+		}
+		if err := saveOperation(db, req5, msg, result); err != nil {
+			log.Printf(errSaveOperation, err)
+		}
+	*/
 	// Получаем и выводим историю из базы данных
 	log.Println("\n=== История операций из БД ===")
 	history, err := getHistory(db)
