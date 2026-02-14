@@ -6,7 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"lizzyCalc/internal/api/http"
-	"lizzyCalc/internal/repository/pg"
+	"lizzyCalc/internal/infrastructure/pg"
 )
 
 const AppName = "CALCULATOR"

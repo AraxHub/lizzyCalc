@@ -20,7 +20,7 @@
 - **internal/ports** — интерфейсы: OperationRepository (сохранение/чтение операций, Ping), CalculatorUseCase (Calculate, History).
 - **internal/usecase/calculator** — бизнес-логика калькулятора; зависит только от порта репозитория и домена.
 - **internal/api/http** — входной адаптер: сервер (Gin), контроллеры (system — liveness/readyness, calculator — calculate/history), middlewares (RequestLogger).
-- **internal/repository/pg** — выходной адаптер: реализация OperationRepository на PostgreSQL, миграции (таблица operations).
+- **internal/infrastructure/pg** — выходной адаптер: реализация OperationRepository на PostgreSQL, миграции (таблица operations).
 - **internal/pkg/logger** — общая утилита логирования (файл + консоль).
 
 ### 3. Как реализована чистая архитектура
