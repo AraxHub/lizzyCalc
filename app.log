@@ -1,0 +1,51 @@
+time=2026-02-14T18:42:11.414+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T18:42:18.927+03:00 level=INFO msg=request method=GET path=/readyness status=200 ip=::1 latency_ms=3
+time=2026-02-14T18:42:33.063+03:00 level=INFO msg=request method=GET path=/api/v1/calculate status=404 ip=::1 latency_ms=0
+time=2026-02-14T18:43:01.972+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=::1 latency_ms=83
+time=2026-02-14T18:43:34.346+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=::1 latency_ms=8
+time=2026-02-14T18:45:23.852+03:00 level=WARN msg="calculate validation failed" error="invalid operation: \"апро\""
+time=2026-02-14T18:45:23.853+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=400 ip=::1 latency_ms=7
+time=2026-02-14T18:46:35.844+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T18:46:35.844+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T18:46:40.063+03:00 level=WARN msg="calculate validation failed" error="invalid operation: апро"
+time=2026-02-14T18:46:40.064+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=400 ip=::1 latency_ms=1
+time=2026-02-14T18:47:07.574+03:00 level=INFO msg=request method=POST path=/api/v1/history status=404 ip=::1 latency_ms=0
+time=2026-02-14T18:47:14.180+03:00 level=INFO msg=request method=POST path=/api/v1/history status=404 ip=::1 latency_ms=0
+time=2026-02-14T18:47:19.740+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T18:47:19.762+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T18:47:28.219+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T18:47:36.380+03:00 level=INFO msg=request method=POST path=/api/v1/history status=404 ip=::1 latency_ms=0
+time=2026-02-14T18:47:53.423+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=::1 latency_ms=17
+time=2026-02-14T18:50:49.010+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T20:21:29.972+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T21:04:19.465+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T21:04:23.272+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=22
+time=2026-02-14T21:04:24.567+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=20
+time=2026-02-14T21:23:29.966+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T21:23:36.396+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=18
+time=2026-02-14T21:23:37.492+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=2
+time=2026-02-14T21:23:37.954+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=6
+time=2026-02-14T21:24:32.374+03:00 level=INFO msg="application started" addr=0.0.0.0:8080
+time=2026-02-14T21:24:35.404+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=16
+time=2026-02-14T21:24:38.309+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=5
+time=2026-02-14T21:24:38.319+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=2
+time=2026-02-14T21:24:38.846+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:38.853+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=0
+time=2026-02-14T21:24:39.186+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=4
+time=2026-02-14T21:24:39.191+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:39.357+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=2
+time=2026-02-14T21:24:39.362+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:39.477+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:39.481+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=0
+time=2026-02-14T21:24:39.619+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=3
+time=2026-02-14T21:24:39.629+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=4
+time=2026-02-14T21:24:39.862+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=2
+time=2026-02-14T21:24:39.869+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:41.872+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:42.766+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=1
+time=2026-02-14T21:24:43.700+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=3
+time=2026-02-14T21:24:43.865+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=3
+time=2026-02-14T21:24:43.981+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=2
+time=2026-02-14T21:24:44.129+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=2
+time=2026-02-14T21:24:44.453+03:00 level=INFO msg=request method=POST path=/api/v1/calculate status=200 ip=172.29.0.1 latency_ms=3
+time=2026-02-14T21:24:45.267+03:00 level=INFO msg=request method=GET path=/api/v1/history status=200 ip=172.29.0.1 latency_ms=1

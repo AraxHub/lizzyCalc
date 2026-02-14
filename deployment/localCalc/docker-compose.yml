@@ -1,6 +1,6 @@
 services:
   postgres:
-    container_name: postgres
+    container_name: lizzycalc-postgres
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
@@ -15,7 +15,7 @@ services:
       retries: 5
 
   calculator:
-    container_name: app-calculator
+    container_name: lizzycalc-calculator
     build:
       context: ../..
       dockerfile: deployment/localCalc/Dockerfile

@@ -1,0 +1,10 @@
+# Отдельный контейнер только для фронта. Бэкенд не поднимает — ожидается уже запущенный
+# на хосте (отладка или контейнер) на порту 8080. Фронт в браузере ходит на http://localhost:8080.
+services:
+  frontend:
+    container_name: lizzycalc-frontend
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
