@@ -1,86 +1,26 @@
 # lizzyCalc
 
-Калькулятор: Go (Clean Architecture), PostgreSQL, React. Окружение в `deployment/`: бэкенд — `deployment/localCalc`, фронт — `deployment/frontend`.
+Калькулятор: Go (Clean Architecture), PostgreSQL, Redis, React.
 
 ---
 
-## 1. Поднятие с полного нуля
+## Кэш: устройство по слоям и бизнес-задача
 
-Команды выполняй из **корня репо** (или укажи полный путь к нему). Сначала бэк, потом фронт.
+### Бизнес-задача
 
-**Шаг 1 — бэкенд (postgres + API):**
+Кэш снижает нагрузку на БД и сохраняет историю операций **осмысленной**: в БД попадает **каждая уникальная операция по одному разу** (первый запрос), повторные запросы с теми же операндами и действием отдаются из кэша **без записи в БД**. История тогда отражает «что считали» (распределение операций, аналитика), а не каждый повторный клик. В проде это даёт меньше записей, меньшую нагрузку на БД и быстрый ответ на частые одинаковые запросы.
 
-```bash
-cd deployment/localCalc
-docker compose -p lizzycalc up -d --build
-```
+### Устройство по слоям
 
-**Шаг 2 — фронт:**
+- **ports** (`internal/ports/cache.go`)  
+  Интерфейс **Cache**: `Get(ctx, key) (value float64, found bool, err error)` и `Set(ctx, key, value float64) error`. Ключ — строка операции, значение — результат. Контракт не привязан к Redis.
 
-```bash
-cd deployment/frontend
-docker compose -p lizzycalc-frontend up -d --build
-```
+- **usecase** (`internal/usecase/calculator/`)  
+  В **Calculate**: по `number1`, `number2`, `operation` формируется читаемый ключ (например, `"1 + 1"`). Сначала вызывается `cache.Get(key)`. При попадании — возвращается результат из кэша, в БД и расчёт не идёт. При промахе — выполняется расчёт, результат сохраняется в репозиторий (БД), затем кладётся в кэш (`cache.Set`), после чего возвращается ответ.  
+  **History** кэш не использует: история всегда читается из БД через `repo.GetHistory`.
 
-**Куда заходить:**
+- **infrastructure** (`internal/infrastructure/redis/`)  
+  **module.go**: подключение к Redis (конфиг, клиент, `Ping`).  
+  **cache.go**: реализация **ports.Cache** поверх Redis: ключ — строка, значение — результат в виде строки (float64). Ключи уникальны, повторный Set перезаписывает значение.
 
-| Что        | URL                                                |
-|-----------|-----------------------------------------------------|
-| Интерфейс | http://localhost:3000                               |
-| API       | http://localhost:8080                              |
-| БД        | localhost:5433 (user: postgres, pass: postgres, db: lizzycalc) |
-
-Фронт с 3000 шлёт запросы по `/api` — nginx в контейнере проксирует их на бэк (host:8080). Бэк может быть в контейнере или запущен из отладки на 8080.
-
-**Бэк из отладки вместо контейнера:** поднять только БД — `cd deployment/localCalc && docker compose -p lizzycalc up -d postgres`. В IDE запустить `cmd/calculator` (порт 8080, БД localhost:5433). Конфиг хоста — `deployment/localCalc/.env`. Потом поднять фронт как в шаге 2.
-
----
-
-## 2. Пересборка с нуля без кэширования
-
-Полная пересборка: контейнеры и локальные образы удаляются, сборка идёт без кэша. Используй после доработок кода или если что-то «залипло».
-
-**Бэкенд (postgres + calculator):**
-
-```bash
-cd deployment/localCalc
-docker compose -p lizzycalc down --rmi local -v
-docker compose -p lizzycalc build --no-cache
-docker compose -p lizzycalc up -d
-```
-
-- `--rmi local` — удалить образы, собранные этим compose.  
-- `-v` — удалить тома (данные БД). Чтобы **сохранить БД**, убери `-v`.
-
-**Фронт:**
-
-```bash
-cd deployment/frontend
-docker compose -p lizzycalc-frontend down --rmi local
-docker compose -p lizzycalc-frontend build --no-cache
-docker compose -p lizzycalc-frontend up -d
-```
-
-Если при `up -d` ошибка про занятое имя контейнера `lizzycalc-frontend`:
-
-```bash
-docker rm -f lizzycalc-frontend
-cd deployment/frontend
-docker compose -p lizzycalc-frontend up -d
-```
-
-**Всё разом (бэк + фронт с нуля, без кэша):**
-
-```bash
-cd deployment/localCalc
-docker compose -p lizzycalc down --rmi local -v
-docker compose -p lizzycalc build --no-cache && docker compose -p lizzycalc up -d
-
-cd ../frontend
-docker compose -p lizzycalc-frontend down --rmi local
-docker rm -f lizzycalc-frontend 2>/dev/null || true
-docker compose -p lizzycalc-frontend build --no-cache && docker compose -p lizzycalc-frontend up -d
-```
-
-Чтобы при полной пересборке **не терять данные БД**, в первой команде убери `-v`:  
-`docker compose -p lizzycalc down --rmi local` (без `-v`).
+Итого: порт задаёт контракт кэша, usecase решает «сначала кэш, при промахе — расчёт + БД + кэш», инфраструктура даёт реализацию для Redis.

@@ -9,8 +9,20 @@ import (
 	"lizzyCalc/internal/domain"
 )
 
-// Calculate — вычисляет операцию, сохраняет в репозиторий и возвращает результат.
+// Calculate — проверяет кэш; при промахе считает, сохраняет в БД и в кэш, возвращает результат.
 func (u *UseCase) Calculate(ctx context.Context, number1, number2 float64, operation string) (*domain.Operation, error) {
+	key := cacheKey(number1, number2, operation)
+	if cached, found, err := u.cache.Get(ctx, key); err == nil && found {
+		return &domain.Operation{
+			Number1:   number1,
+			Number2:   number2,
+			Operation: operation,
+			Result:    cached,
+			Message:   "",
+			Timestamp: time.Now(),
+		}, nil
+	}
+
 	var result float64
 	var message string
 	switch operation {
@@ -37,6 +49,9 @@ func (u *UseCase) Calculate(ctx context.Context, number1, number2 float64, opera
 		Timestamp: time.Now(),
 	}
 	if err := u.repo.SaveOperation(ctx, op); err != nil {
+		return nil, err
+	}
+	if err := u.cache.Set(ctx, key, result); err != nil {
 		return nil, err
 	}
 	return &op, nil

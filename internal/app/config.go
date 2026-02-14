@@ -7,14 +7,16 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"lizzyCalc/internal/api/http"
 	"lizzyCalc/internal/infrastructure/pg"
+	"lizzyCalc/internal/infrastructure/redis"
 )
 
 const AppName = "CALCULATOR"
 
-// Config — конфиг приложения. Заполняется через envconfig с префиксом APP.
+// Config — конфиг приложения. Заполняется через envconfig с префиксом CALCULATOR.
 type Config struct {
 	Server http.ServerConfig `env:"SERVER"`
 	DB     pg.Config         `env:"DB"`
+	Redis  redis.Config     `env:"REDIS"`
 }
 
 // LoadCfg загружает конфиг: подтягивает .env (godotenv), затем заполняет структуру из окружения (envconfig).

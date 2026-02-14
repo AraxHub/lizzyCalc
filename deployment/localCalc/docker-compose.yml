@@ -14,6 +14,35 @@ services:
       timeout: 2s
       retries: 5
 
+  redis:
+    container_name: lizzycalc-redis
+    image: redis:7-alpine
+    command: redis-server --requirepass lizzycalc-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "lizzycalc-redis", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+
+  redisinsight:
+    container_name: lizzycalc-redisinsight
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    environment:
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: "6379"
+      RI_REDIS_PASSWORD: lizzycalc-redis
+      RI_REDIS_ALIAS: lizzycalc
+      RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
+    volumes:
+      - redisinsight-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
   calculator:
     container_name: lizzycalc-calculator
     build:
@@ -30,6 +59,14 @@ services:
       CALCULATOR_DB_PASSWORD: postgres
       CALCULATOR_DB_NAME: lizzycalc
       CALCULATOR_DB_SSLMODE: disable
+      CALCULATOR_REDIS_HOST: redis
+      CALCULATOR_REDIS_PORT: 6379
+      CALCULATOR_REDIS_PASSWORD: lizzycalc-redis
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  redisinsight-data:

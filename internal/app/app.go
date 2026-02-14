@@ -12,6 +12,7 @@ import (
 	"lizzyCalc/internal/api/http/controllers/calculator"
 	"lizzyCalc/internal/api/http/controllers/system"
 	"lizzyCalc/internal/infrastructure/pg"
+	"lizzyCalc/internal/infrastructure/redis"
 	"lizzyCalc/internal/pkg/logger"
 	calclUsecase "lizzyCalc/internal/usecase/calculator"
 )
@@ -26,7 +27,7 @@ func New(cfg Config) *App {
 	return &App{cfg: cfg}
 }
 
-// Run подключается к БД, линейно инициализирует зависимости и запускает HTTP-сервер (блокирующий вызов).
+// Run подключается к БД и Redis, инициализирует зависимости и запускает HTTP-сервер (блокирующий вызов).
 func (a *App) Run() error {
 	db, err := pg.New(&a.cfg.DB)
 	if err != nil {
@@ -38,12 +39,18 @@ func (a *App) Run() error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
+	rdb, err := redis.New(&a.cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("redis: %w", err)
+	}
+	defer rdb.Close()
+
 	log := logger.New()
 	slog.SetDefault(log)
 
 	repo := pg.NewOperationRepo(db, log)
-
-	uc := calclUsecase.New(repo, log)
+	cache := redis.NewCache(rdb, log)
+	uc := calclUsecase.New(repo, cache, log)
 
 	srv := apihttp.NewServer(a.cfg.Server)
 	srv.AddController(
