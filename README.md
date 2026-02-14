@@ -22,6 +22,7 @@
 ## TODO (планируемые ветки)
 
 - [ ] **feature-mvp** — минимальный жизнеспособный продукт (MVP)
+- [ ] **feature-frontend** — фронтенд (UI для калькулятора)
 - [ ] **feature-redis-cache** — кэширование (Redis)
 - [ ] **feature-kafka-broker** — интеграция с Kafka (брокер сообщений)
 - [ ] **feature-final-prod-calculator** — финальный production-калькулятор: env + архитектура + API + БД в одном
