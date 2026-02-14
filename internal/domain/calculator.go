@@ -1,6 +1,20 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// ErrUnknownOperation возвращается, когда операция не поддерживается.
+var ErrUnknownOperation = errors.New("unknown operation")
+
+// Константы арифметических операций.
+const (
+	OpAdd = "+"
+	OpSub = "-"
+	OpMul = "*"
+	OpDiv = "/"
+)
 
 // Operation — запись об одной операции калькулятора.
 type Operation struct {

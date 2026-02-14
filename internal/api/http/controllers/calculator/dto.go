@@ -1,12 +1,27 @@
 package calculator
 
-import "time"
+import (
+	"fmt"
+	"time"
+
+	"lizzyCalc/internal/domain"
+)
 
 // CalculateRequest — запрос на вычисление (для POST /api/calculate).
 type CalculateRequest struct {
 	Number1   float64 `json:"number1" binding:"required"`
 	Number2   float64 `json:"number2" binding:"required"`
 	Operation string  `json:"operation" binding:"required"`
+}
+
+// Validate проверяет запрос: операция должна быть одной из +, -, *, /.
+func (r *CalculateRequest) Validate() error {
+	switch r.Operation {
+	case domain.OpAdd, domain.OpSub, domain.OpMul, domain.OpDiv:
+		return nil
+	default:
+		return fmt.Errorf("invalid operation: %s", r.Operation)
+	}
 }
 
 // CalculateResponse — ответ с результатом.

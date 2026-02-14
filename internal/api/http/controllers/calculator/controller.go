@@ -1,10 +1,12 @@
 package calculator
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"lizzyCalc/internal/domain"
 	"lizzyCalc/internal/ports"
 )
 
@@ -36,8 +38,19 @@ func (c *Controller) calculate(ctx *gin.Context) {
 		return
 	}
 
+	if err := req.Validate(); err != nil {
+		c.log.Warn("calculate validation failed", "error", err)
+		ctx.JSON(http.StatusBadRequest, CalculateResponse{Message: err.Error()})
+		return
+	}
+
 	op, err := c.uc.Calculate(ctx.Request.Context(), req.Number1, req.Number2, req.Operation)
 	if err != nil {
+		if errors.Is(err, domain.ErrUnknownOperation) {
+			c.log.Warn("calculate bad operation", "error", err)
+			ctx.JSON(http.StatusBadRequest, CalculateResponse{Message: err.Error()})
+			return
+		}
 		c.log.Error("calculate failed", "error", err)
 		ctx.JSON(http.StatusInternalServerError, CalculateResponse{Message: err.Error()})
 		return

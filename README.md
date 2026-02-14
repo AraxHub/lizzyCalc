@@ -77,6 +77,37 @@ API: `http://localhost:8080`. БД с хоста: `localhost:5433`.
 
 ---
 
+## Хэндлеры
+
+### Системные (system)
+
+- **GET /liveness** — всегда возвращает 200 и `{"status": "alive"}`. Нужен для проверки, что процесс жив (Kubernetes liveness probe).
+- **GET /readyness** — пингует БД через `OperationRepository.Ping`. При успехе — 200 и `{"status": "ready"}`, при ошибке — 503 и `{"status": "not ready", "error": "..."}`. Используется как readiness probe (сервис готов принимать трафик).
+
+### Калькулятор (calculator)
+
+- **POST /api/v1/calculate**
+  - Тело: `CalculateRequest` — `number1`, `number2`, `operation` (обязательные поля).
+  - Валидация: биндинг JSON; затем `req.Validate()` — операция должна быть одной из `+`, `-`, `*`, `/`.
+  - Вызов use case `Calculate(ctx, number1, number2, operation)`.
+  - Ответы: 200 — `{ "result", "message" }`; 400 — неверный JSON, неизвестная операция или `domain.ErrUnknownOperation`; 500 — ошибка use case (в т.ч. деление на ноль при обходе валидации) или сохранения в БД.
+- **GET /api/v1/history**
+  - Без тела. Вызов use case `History(ctx)`.
+  - Ответы: 200 — `{ "items": [ { "id", "number1", "number2", "operation", "result", "message", "timestamp" }, ... ] }` (последние операции сначала); 500 — ошибка репозитория.
+
+---
+
+## Бизнес-логика (usecase)
+
+- **Calculate(ctx, number1, number2, operation)**  
+  Вычисляет арифметическую операцию по строке `operation`: `+` (сложение), `-` (вычитание), `*` (умножение), `/` (деление). Для деления проверяет `number2 != 0`; при нуле возвращает ошибку `division by zero`. При неизвестной операции возвращает `domain.ErrUnknownOperation` (контроллер отдаёт 400). После вычисления формирует `domain.Operation` (Number1, Number2, Operation, Result, Timestamp), сохраняет её через `OperationRepository.SaveOperation` и возвращает указатель на операцию.
+- **History(ctx)**  
+  Возвращает список всех сохранённых операций через `OperationRepository.GetHistory` (порядок задаётся в репозитории — в текущей реализации «последние сначала»). Дополнительной логики нет.
+
+Домен задаёт константы операций (`OpAdd`, `OpSub`, `OpMul`, `OpDiv`) и ошибку `ErrUnknownOperation`; валидация на уровне API использует их для проверки запроса до вызова use case.
+
+---
+
 ## Логирование и завершение
 
 - Логгер: `internal/pkg/logger` — пишет в **app.log** и в **stderr**.
