@@ -13,7 +13,6 @@ import (
 	"lizzyCalc/internal/api/http/controllers/system"
 	"lizzyCalc/internal/infrastructure/pg"
 	"lizzyCalc/internal/pkg/logger"
-	calclUsecase "lizzy
 	calclUsecase "lizzyCalc/internal/usecase/calculator"
 )
 
