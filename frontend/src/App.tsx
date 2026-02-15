@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import './App.css'
 
-// Относительный /api — в dev проксирует Vite, в контейнере — nginx. Один origin, без CORS.
-const API_URL = ''
-
 type HistoryItem = {
   id: number
   number1: number
@@ -28,7 +25,7 @@ export default function App() {
   const fetchHistory = async () => {
     setHistoryLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/v1/history`)
+      const res = await fetch('/api/v1/history')
       if (!res.ok) throw new Error('Не удалось загрузить историю')
       const data = await res.json()
       setHistory(data.items || [])
@@ -51,7 +48,7 @@ export default function App() {
     }
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/api/v1/calculate`, {
+      const res = await fetch('/api/v1/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ number1: a, number2: b, operation }),
