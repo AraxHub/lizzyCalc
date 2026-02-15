@@ -37,6 +37,76 @@
 
 ---
 
+## Docker и контейнеры
+
+**От ветки к ветке** меняется и код, и состав сервисов в compose (на одной ветке только postgres + calculator, на другой добавлены redis, redisinsight и т.д.). Образ **calculator** собирается из кода текущей ветки. Если переключился на другую ветку и не пересобрал образ — в контейнере продолжает крутиться старый бинарник (например, с Redis), и приложение падает или ведёт себя не так, как в коде текущей ветки.
+
+**Почему «пересборка без изменений»:** Docker кэширует слои. Если не сносить старые образы (`--rmi local`) и не собирать без кэша (`--no-cache`), может подтянуться закэшированный слой с другим кодом, и по факту образ остаётся старым. Поэтому при смене ветки лучше делать полную пересборку: остановить контейнеры, удалить локальные образы, собрать заново без кэша, поднять.
+
+**Ниже команды** — их можно выполнять после переключения ветки, чтобы контейнеры соответствовали текущей ветке.
+
+### Бэкенд (postgres + calculator; на части веток ещё redis, redisinsight, кафки и тд)
+
+Из корня репо. После смены ветки выполни:
+
+```bash
+cd deployment/localCalc
+docker compose -p localcalc down --rmi local 
+docker compose -p localcalc build --no-cache
+docker compose -p localcalc up -d
+```
+
+- `down --rmi local -v` — останавливает контейнеры, удаляет образы, собранные этим compose, и тома. Чтобы **не терять данные БД**, можно добавить `-v`, но проще и данные сносить, чтобы понимать, как происходит наполнение бд.
+- `build --no-cache` — сборка образов без кэша (в образ попадёт код текущей ветки).
+- Состав сервисов будет таким, какой описан в `deployment/localCalc/docker-compose.yml` на этой ветке (например, на feature-redis-cache поднимется ещё redis и redisinsight).
+
+### Фронт (отдельный compose)
+
+```bash
+cd deployment/frontend
+docker compose -p lizzycalc-frontend down --rmi local
+docker rm -f lizzycalc-frontend 2>/dev/null || true
+docker compose -p lizzycalc-frontend build --no-cache
+docker compose -p lizzycalc-frontend up -d
+```
+
+`docker rm -f lizzycalc-frontend` — на случай, если контейнер с таким именем остался и мешает созданию нового.
+
+### Пример: перешёл на feature-redis-cache
+
+```bash
+git checkout feature-redis-cache
+cd deployment/localCalc
+docker compose -p localcalc down --rmi local 
+docker compose -p localcalc build --no-cache
+docker compose -p localcalc up -d
+```
+
+Потом при необходимости фронт (если на этой ветке он есть и нужен):
+
+```bash
+cd deployment/frontend
+docker compose -p lizzycalc-frontend down --rmi local
+docker rm -f lizzycalc-frontend 2>/dev/null || true
+docker compose -p lizzycalc-frontend build --no-cache && docker compose -p lizzycalc-frontend up -d
+```
+
+### Пример: перешёл на feature-frontend (движение назад по программе)
+
+На этой ветке в compose только postgres + calculator (без Redis). Чтобы не крутился старый образ с Redis:
+
+```bash
+git checkout feature-frontend
+cd deployment/localCalc
+docker compose -p localcalc down --rmi local -v
+docker compose -p localcalc build --no-cache
+docker compose -p localcalc up -d
+```
+
+Фронт — те же команды, что выше (deployment/frontend).
+
+---
+
 ## Git: краткие инструкции
 
 **Клонировать репо**
