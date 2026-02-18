@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	apigrpc "lizzyCalc/internal/api/grpc"
 	apihttp "lizzyCalc/internal/api/http"
 	"lizzyCalc/internal/api/http/controllers/calculator"
 	"lizzyCalc/internal/api/http/controllers/system"
@@ -52,15 +54,28 @@ func (a *App) Run() error {
 	cache := redis.NewCache(rdb, log)
 	uc := calclUsecase.New(repo, cache, log)
 
+	grpcAddr := a.cfg.Grpc.Host + ":" + a.cfg.Grpc.Port
+	grpcSrv := apigrpc.NewServer(grpcAddr, uc, log)
+	go func() {
+		if err := grpcSrv.Start(); err != nil {
+			slog.Error("grpc server failed", "error", err)
+		}
+	}()
+
 	srv := apihttp.NewServer(a.cfg.Server)
 	srv.AddController(
 		system.New(repo, log),
 		calculator.New(uc, log))
 
-	addr := a.cfg.Server.Host + ":" + a.cfg.Server.Port
-	slog.Info("application started", "addr", addr)
+	httpAddr := a.cfg.Server.Host + ":" + a.cfg.Server.Port
+	slog.Info("application started", "http", httpAddr, "grpc", grpcAddr)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return srv.Start(ctx)
+	if err := srv.Start(ctx); err != nil {
+		return err
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return grpcSrv.Stop(shutdownCtx)
 }
