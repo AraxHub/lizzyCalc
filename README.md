@@ -25,7 +25,7 @@
 | 9 | `feature-frontend` | Фронтенд (React): UI калькулятора, история, прокси `/api` на бэк, окружение в контейнерах (`deployment/localCalc`, `deployment/frontend`). и инструкция, как их поднимать |
 | 10 | `feature-redis-cache` | Кэширование (Redis): порт Cache, реализация в `internal/infrastructure/redis`, проверка кэша в usecase перед расчётом, запись при промахе. История только из БД. |
 | 11 | `feature-makefile` | Makefile для пересборки композников после смены ветки: `make backend`, `make frontend`, down/build/up, DROP_VOLUMES. |
-| 12 | `feature-grpc-api` | gRPC-сервер на отдельном порту (например 9090): тот же use case (Calculate, History), второй транспорт рядом с REST. Proto, кодоген, вызовы из клиента. |
+| 12 | `feature-grpc-api` | gRPC-сервер на отдельном порту (например 9090): тот же use case (Calculate, History), второй транспорт рядом с REST. Контракты и кодоген — в отдельном репо [AraxHub/calc-proto](https://github.com/AraxHub/calc-proto); lizzyCalc подтягивает модуль и реализует сервер. Вызовы из grpcurl/клиента. |
 | — | `main` | Текущая основная ветка. |
 
 Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC.
@@ -34,7 +34,6 @@
 
 ## TODO (планируемые ветки)
 
-- [ ] **feature-grpc-api** — gRPC поверх того же use case: proto, сервер на отдельном порту, REST по-прежнему для фронта.
 - [ ] **feature-kafka-broker** — интеграция с Kafka, после расчёта просто пишем в топик, консюмер читает и логирует
 - [ ] **feature-clickhouse-analytics** — аналитика в ClickHouse: запись операций/событий в колоночную БД из консюмера, хэндлер analytics для получения данных по агрегатам
 - [ ] **feature-mongo-storage** — хранилище операций в MongoDB (документная БД по коллекциям). Фича-флаг в конфиге: в зависимости от него используется либо PostgreSQL, либо Mongo (один интерфейс репозитория, два адаптера).
