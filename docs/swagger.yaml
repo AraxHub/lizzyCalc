@@ -1,0 +1,173 @@
+basePath: /
+definitions:
+  internal_api_http_controllers_calculator.CalculateRequest:
+    description: Параметры для выполнения арифметической операции
+    properties:
+      number1:
+        example: 10.5
+        type: number
+      number2:
+        example: 5.2
+        type: number
+      operation:
+        enum:
+        - +
+        - '-'
+        - '*'
+        - /
+        example: +
+        type: string
+    required:
+    - number1
+    - number2
+    - operation
+    type: object
+  internal_api_http_controllers_calculator.CalculateResponse:
+    description: Результат арифметической операции
+    properties:
+      message:
+        example: division by zero
+        type: string
+      result:
+        example: 15.7
+        type: number
+    type: object
+  internal_api_http_controllers_calculator.ErrorResponse:
+    description: Сообщение об ошибке
+    properties:
+      error:
+        example: internal server error
+        type: string
+    type: object
+  internal_api_http_controllers_calculator.HistoryItem:
+    description: Информация об одной выполненной операции
+    properties:
+      id:
+        example: 1
+        type: integer
+      message:
+        example: ""
+        type: string
+      number1:
+        example: 10.5
+        type: number
+      number2:
+        example: 5.2
+        type: number
+      operation:
+        example: +
+        type: string
+      result:
+        example: 15.7
+        type: number
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+    type: object
+  internal_api_http_controllers_calculator.HistoryResponse:
+    description: Список всех выполненных операций
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal_api_http_controllers_calculator.HistoryItem'
+        type: array
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: |-
+    API калькулятора с кэшированием, хранением истории и аналитикой.
+    Поддерживает операции: сложение (+), вычитание (-), умножение (*), деление (/).
+  title: LizzyCalc API
+  version: "1.0"
+paths:
+  /api/v1/calculate:
+    post:
+      consumes:
+      - application/json
+      description: Принимает два числа и операцию (+, -, *, /), возвращает результат.
+        Результат кэшируется и сохраняется в БД.
+      parameters:
+      - description: Параметры вычисления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_api_http_controllers_calculator.CalculateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Результат вычисления
+          schema:
+            $ref: '#/definitions/internal_api_http_controllers_calculator.CalculateResponse'
+        "400":
+          description: Невалидный запрос или неизвестная операция
+          schema:
+            $ref: '#/definitions/internal_api_http_controllers_calculator.CalculateResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/internal_api_http_controllers_calculator.CalculateResponse'
+      summary: Выполнить вычисление
+      tags:
+      - calculator
+  /api/v1/history:
+    get:
+      description: Возвращает список всех выполненных операций из БД
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список операций
+          schema:
+            $ref: '#/definitions/internal_api_http_controllers_calculator.HistoryResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/internal_api_http_controllers_calculator.ErrorResponse'
+      summary: Получить историю операций
+      tags:
+      - calculator
+  /liveness:
+    get:
+      description: Возвращает статус "alive" если сервер запущен
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: alive'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Проверка жизнеспособности
+      tags:
+      - system
+  /readyness:
+    get:
+      description: Проверяет подключение к БД и возвращает статус готовности
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'status: ready'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: 'status: not ready, error: ...'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Проверка готовности
+      tags:
+      - system
+swagger: "2.0"
+tags:
+- description: 'Операции калькулятора: вычисления и история'
+  name: calculator
+- description: 'Системные эндпоинты: liveness, readiness'
+  name: system

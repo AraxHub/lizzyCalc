@@ -22,6 +22,7 @@ DOWN_VOL_ARGS := $(if $(filter 1,$(DROP_VOLUMES)),-v,)
 .PHONY: kafka-create-topic
 .PHONY: test test-v test-coverage test-run test-unit test-integration
 .PHONY: mocks
+.PHONY: swagger swagger-install
 
 help:
 	@echo "Бэкенд:"
@@ -49,6 +50,10 @@ help:
 	@echo "  make test-coverage      — тесты + HTML-отчёт о покрытии (coverage.html)"
 	@echo "  make test-run NAME=...  — запустить тест по имени (NAME=TestCacheKey)"
 	@echo "  make mocks              — сгенерировать моки (mockgen)"
+	@echo ""
+	@echo "Swagger:"
+	@echo "  make swagger            — сгенерировать Swagger-документацию (docs/)"
+	@echo "  make swagger-install    — установить swag CLI"
 
 # --- Backend ---
 
@@ -138,3 +143,16 @@ mocks:
 	@echo "Генерация моков..."
 	go generate ./internal/ports/...
 	@echo "Готово. Моки в internal/mocks/"
+
+# --- Swagger ---
+
+# Установить swag CLI (один раз)
+swagger-install:
+	go install github.com/swaggo/swag/cmd/swag@latest
+
+# Сгенерировать Swagger-документацию из аннотаций
+swagger:
+	@echo "Генерация Swagger-документации..."
+	swag init -g cmd/calculator/main.go -o docs --parseDependency --parseInternal
+	@echo "Готово. Документация в docs/"
+	@echo "После запуска сервера: http://localhost:8080/swagger/index.html"

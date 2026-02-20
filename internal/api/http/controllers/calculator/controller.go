@@ -24,11 +24,21 @@ func New(uc ports.ICalculatorUseCase, log *slog.Logger) *Controller {
 // RegisterRoutes реализует http.Controller: регистрирует маршруты на роутере.
 func (c *Controller) RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
-	
+
 	api.POST("/calculate", c.calculate)
 	api.GET("/history", c.history)
 }
 
+// @Summary Выполнить вычисление
+// @Description Принимает два числа и операцию (+, -, *, /), возвращает результат. Результат кэшируется и сохраняется в БД.
+// @Tags calculator
+// @Accept json
+// @Produce json
+// @Param request body CalculateRequest true "Параметры вычисления"
+// @Success 200 {object} CalculateResponse "Результат вычисления"
+// @Failure 400 {object} CalculateResponse "Невалидный запрос или неизвестная операция"
+// @Failure 500 {object} CalculateResponse "Внутренняя ошибка сервера"
+// @Router /api/v1/calculate [post]
 func (c *Controller) calculate(ctx *gin.Context) {
 	var req CalculateRequest
 
@@ -62,6 +72,13 @@ func (c *Controller) calculate(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, CalculateResponse{Result: op.Result, Message: op.Message})
 }
 
+// @Summary Получить историю операций
+// @Description Возвращает список всех выполненных операций из БД
+// @Tags calculator
+// @Produce json
+// @Success 200 {object} HistoryResponse "Список операций"
+// @Failure 500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router /api/v1/history [get]
 func (c *Controller) history(ctx *gin.Context) {
 	list, err := c.uc.History(ctx.Request.Context())
 	if err != nil {
