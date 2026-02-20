@@ -21,6 +21,7 @@ DOWN_VOL_ARGS := $(if $(filter 1,$(DROP_VOLUMES)),-v,)
 .PHONY: frontend-from-zero frontend-app frontend-down frontend-build frontend-up
 .PHONY: kafka-create-topic
 .PHONY: test test-v test-coverage test-run
+.PHONY: mocks
 
 help:
 	@echo "Бэкенд:"
@@ -45,6 +46,7 @@ help:
 	@echo "  make test-v             — тесты с verbose"
 	@echo "  make test-coverage      — тесты + HTML-отчёт о покрытии (coverage.html)"
 	@echo "  make test-run NAME=...  — запустить тест по имени (NAME=TestCacheKey)"
+	@echo "  make mocks              — сгенерировать моки (mockgen)"
 
 # --- Backend ---
 
@@ -118,3 +120,9 @@ test-coverage:
 # Запустить конкретный тест по имени (usage: make test-run NAME=TestCacheKey)
 test-run:
 	go test ./... -v -run $(NAME)
+
+# Сгенерировать моки из интерфейсов (требуется mockgen: go install go.uber.org/mock/mockgen@latest)
+mocks:
+	@echo "Генерация моков..."
+	go generate ./internal/ports/...
+	@echo "Готово. Моки в internal/mocks/"

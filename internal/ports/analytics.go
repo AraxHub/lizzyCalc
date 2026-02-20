@@ -1,5 +1,7 @@
 package ports
 
+//go:generate mockgen -source=analytics.go -destination=../mocks/analytics_mock.go -package=mocks
+
 import (
 	"context"
 

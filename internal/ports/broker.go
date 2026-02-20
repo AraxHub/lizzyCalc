@@ -1,5 +1,7 @@
 package ports
 
+//go:generate mockgen -source=broker.go -destination=../mocks/broker_mock.go -package=mocks
+
 import "context"
 
 // IProducer — контракт отправки сообщений в брокер (например Kafka). Топик задаётся при создании реализации (конфиг).

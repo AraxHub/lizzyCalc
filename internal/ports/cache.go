@@ -1,5 +1,7 @@
 package ports
 
+//go:generate mockgen -source=cache.go -destination=../mocks/cache_mock.go -package=mocks
+
 import "context"
 
 // ICache — контракт кэша результатов операций. Ключ — операция, значение — результат.
