@@ -11,12 +11,12 @@ import (
 
 // Controller — системные маршруты: liveness, readiness, корень API.
 type Controller struct {
-	repo ports.OperationRepository
+	repo ports.IOperationRepository
 	log  *slog.Logger
 }
 
 // New создаёт системный контроллер.
-func New(repo ports.OperationRepository, log *slog.Logger) *Controller {
+func New(repo ports.IOperationRepository, log *slog.Logger) *Controller {
 	return &Controller{repo: repo, log: log}
 }
 

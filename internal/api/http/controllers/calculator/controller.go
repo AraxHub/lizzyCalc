@@ -12,12 +12,12 @@ import (
 
 // Controller — маршруты калькулятора: calculate, history.
 type Controller struct {
-	uc  ports.CalculatorUseCase
+	uc  ports.ICalculatorUseCase
 	log *slog.Logger
 }
 
 // New создаёт контроллер калькулятора.
-func New(uc ports.CalculatorUseCase, log *slog.Logger) *Controller {
+func New(uc ports.ICalculatorUseCase, log *slog.Logger) *Controller {
 	return &Controller{uc: uc, log: log}
 }
 

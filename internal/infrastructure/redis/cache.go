@@ -10,15 +10,15 @@ import (
 	"lizzyCalc/internal/ports"
 )
 
-var _ ports.Cache = (*Cache)(nil)
+var _ ports.ICache = (*Cache)(nil)
 
-// Cache реализует ports.Cache через Redis. Ключ — строка операции, значение — результат (float64 как строка).
+// Cache реализует ports.ICache через Redis. Ключ — строка операции, значение — результат (float64 как строка).
 type Cache struct {
 	cli *Client
 	log *slog.Logger
 }
 
-// NewCache возвращает кэш, реализующий ports.Cache.
+// NewCache возвращает кэш, реализующий ports.ICache.
 func NewCache(cli *Client, log *slog.Logger) *Cache {
 	return &Cache{cli: cli, log: log}
 }

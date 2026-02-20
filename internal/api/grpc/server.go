@@ -16,12 +16,12 @@ import (
 // Server — gRPC-сервер: регистрирует сервисы и слушает порт.
 type Server struct {
 	grpc *grpc.Server
-	uc   ports.CalculatorUseCase
+	uc   ports.ICalculatorUseCase
 	addr string
 }
 
 // NewServer создаёт gRPC-сервер и регистрирует CalculatorService. Логирующий интерцептор пишет метод, latency_ms и grpc_code (аналог HTTP middleware).
-func NewServer(addr string, uc ports.CalculatorUseCase, log *slog.Logger) *Server {
+func NewServer(addr string, uc ports.ICalculatorUseCase, log *slog.Logger) *Server {
 	s := grpc.NewServer(grpc.ChainUnaryInterceptor(interceptors.LoggingUnaryInterceptor(log)))
 	calculatorv1.RegisterCalculatorServiceServer(s, calculator.New(uc, log))
 	return &Server{grpc: s, uc: uc, addr: addr}

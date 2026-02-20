@@ -7,7 +7,7 @@ import (
 	"lizzyCalc/internal/domain"
 )
 
-// OperationRepo реализует ports.OperationRepository для PostgreSQL.
+// OperationRepo реализует ports.IOperationRepository для PostgreSQL.
 type OperationRepo struct {
 	db  *DB
 	log *slog.Logger

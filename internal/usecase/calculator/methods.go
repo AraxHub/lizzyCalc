@@ -2,6 +2,7 @@ package calculator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -40,6 +41,7 @@ func (u *UseCase) Calculate(ctx context.Context, number1, number2 float64, opera
 	default:
 		return nil, fmt.Errorf("%w: %s", domain.ErrUnknownOperation, operation)
 	}
+
 	op := domain.Operation{
 		Number1:   number1,
 		Number2:   number2,
@@ -48,16 +50,33 @@ func (u *UseCase) Calculate(ctx context.Context, number1, number2 float64, opera
 		Message:   message,
 		Timestamp: time.Now(),
 	}
+
 	if err := u.repo.SaveOperation(ctx, op); err != nil {
 		return nil, err
 	}
 	if err := u.cache.Set(ctx, key, result); err != nil {
 		return nil, err
 	}
+
+	if u.broker != nil {
+		value, _ := json.Marshal(op)
+		if err := u.broker.Send(ctx, []byte(key), value); err != nil {
+			u.log.Warn("broker send", "key", key, "error", err)
+		} else {
+			u.log.Info("operation published", "key", key, "result", result)
+		}
+	}
+
 	return &op, nil
 }
 
 // History — история операций (обвязка над репозиторием).
 func (u *UseCase) History(ctx context.Context) ([]domain.Operation, error) {
 	return u.repo.GetHistory(ctx)
+}
+
+// HandleOperationEvent вызывается консьюмером при получении сообщения из топика operations (часть ICalculatorUseCase).
+func (u *UseCase) HandleOperationEvent(ctx context.Context, op domain.Operation) error {
+	u.log.Info("operation event", "number1", op.Number1, "operation", op.Operation, "number2", op.Number2, "result", op.Result)
+	return nil
 }

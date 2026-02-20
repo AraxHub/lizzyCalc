@@ -13,9 +13,11 @@ import (
 	apihttp "lizzyCalc/internal/api/http"
 	"lizzyCalc/internal/api/http/controllers/calculator"
 	"lizzyCalc/internal/api/http/controllers/system"
+	"lizzyCalc/internal/infrastructure/kafka"
 	"lizzyCalc/internal/infrastructure/pg"
 	"lizzyCalc/internal/infrastructure/redis"
 	"lizzyCalc/internal/pkg/logger"
+	"lizzyCalc/internal/ports"
 	calclUsecase "lizzyCalc/internal/usecase/calculator"
 )
 
@@ -52,7 +54,24 @@ func (a *App) Run() error {
 
 	repo := pg.NewOperationRepo(db, log)
 	cache := redis.NewCache(rdb, log)
-	uc := calclUsecase.New(repo, cache, log)
+
+	var broker ports.IProducer
+	if a.cfg.Kafka.Brokers != "" {
+		prod := kafka.NewProducer(&a.cfg.Kafka)
+		defer prod.Close()
+		broker = prod
+	}
+
+	uc := calclUsecase.New(repo, cache, broker, log)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if a.cfg.Kafka.Brokers != "" {
+		consumer := kafka.NewConsumer(&a.cfg.Kafka, uc, log)
+		defer consumer.Close()
+		go consumer.Run(ctx)
+	}
 
 	grpcAddr := a.cfg.Grpc.Host + ":" + a.cfg.Grpc.Port
 	grpcSrv := apigrpc.NewServer(grpcAddr, uc, log)
@@ -70,8 +89,6 @@ func (a *App) Run() error {
 	httpAddr := a.cfg.Server.Host + ":" + a.cfg.Server.Port
 	slog.Info("application started", "http", httpAddr, "grpc", grpcAddr)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
 	if err := srv.Start(ctx); err != nil {
 		return err
 	}

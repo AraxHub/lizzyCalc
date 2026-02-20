@@ -17,12 +17,12 @@ import (
 // В REST это был бы контроллер/хэндлер; в gRPC тип зовут Server, потому что сгенерированный интерфейс называется CalculatorServiceServer (серверная сторона RPC), и реализацию по конвенции называют так же.
 type Server struct {
 	calculatorv1.UnimplementedCalculatorServiceServer
-	uc  ports.CalculatorUseCase
+	uc  ports.ICalculatorUseCase
 	log *slog.Logger
 }
 
 // New создаёт gRPC-сервер калькулятора.
-func New(uc ports.CalculatorUseCase, log *slog.Logger) *Server {
+func New(uc ports.ICalculatorUseCase, log *slog.Logger) *Server {
 	if log == nil {
 		log = slog.Default()
 	}
