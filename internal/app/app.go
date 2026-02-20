@@ -13,11 +13,11 @@ import (
 	apihttp "lizzyCalc/internal/api/http"
 	"lizzyCalc/internal/api/http/controllers/calculator"
 	"lizzyCalc/internal/api/http/controllers/system"
+	"lizzyCalc/internal/infrastructure/click"
 	"lizzyCalc/internal/infrastructure/kafka"
 	"lizzyCalc/internal/infrastructure/pg"
 	"lizzyCalc/internal/infrastructure/redis"
 	"lizzyCalc/internal/pkg/logger"
-	"lizzyCalc/internal/ports"
 	calclUsecase "lizzyCalc/internal/usecase/calculator"
 )
 
@@ -55,23 +55,29 @@ func (a *App) Run() error {
 	repo := pg.NewOperationRepo(db, log)
 	cache := redis.NewCache(rdb, log)
 
-	var broker ports.IProducer
-	if a.cfg.Kafka.Brokers != "" {
-		prod := kafka.NewProducer(&a.cfg.Kafka)
-		defer prod.Close()
-		broker = prod
-	}
+	prod := kafka.NewProducer(&a.cfg.Kafka)
+	defer prod.Close()
 
-	uc := calclUsecase.New(repo, cache, broker, log)
+	ch, err := click.New(&a.cfg.ClickHouse)
+	if err != nil {
+		return fmt.Errorf("clickhouse: %w", err)
+	}
+	defer ch.Close()
+
+	analyticsWriter := click.NewOperationWriter(ch)
+	if err := analyticsWriter.EnsureTable(context.Background()); err != nil {
+		return fmt.Errorf("clickhouse ensure table: %w", err)
+	}
+	log.Info("clickhouse table default.operations_analytics ensured")
+
+	uc := calclUsecase.New(repo, cache, prod, analyticsWriter, log)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if a.cfg.Kafka.Brokers != "" {
-		consumer := kafka.NewConsumer(&a.cfg.Kafka, uc, log)
-		defer consumer.Close()
-		go consumer.Run(ctx)
-	}
+	consumer := kafka.NewConsumer(&a.cfg.Kafka, uc, log)
+	defer consumer.Close()
+	go consumer.Run(ctx)
 
 	grpcAddr := a.cfg.Grpc.Host + ":" + a.cfg.Grpc.Port
 	grpcSrv := apigrpc.NewServer(grpcAddr, uc, log)

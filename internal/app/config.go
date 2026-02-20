@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"lizzyCalc/internal/api/http"
+	"lizzyCalc/internal/infrastructure/click"
 	"lizzyCalc/internal/infrastructure/kafka"
 	"lizzyCalc/internal/infrastructure/pg"
 	"lizzyCalc/internal/infrastructure/redis"
@@ -24,8 +25,9 @@ type Config struct {
 	Server http.ServerConfig `env:"SERVER"`
 	Grpc   GrpcConfig        `env:"GRPC"`
 	DB     pg.Config         `env:"DB"`
-	Redis  redis.Config      `env:"REDIS"`
-	Kafka  kafka.Config      `env:"KAFKA"`
+	Redis      redis.Config      `env:"REDIS"`
+	Kafka      kafka.Config      `env:"KAFKA"`
+	ClickHouse click.Config      `env:"CLICKHOUSE"`
 }
 
 // LoadCfg загружает конфиг: подтягивает .env (godotenv), затем заполняет структуру из окружения (envconfig).

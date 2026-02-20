@@ -14,13 +14,14 @@ func cacheKey(number1, number2 float64, operation string) string {
 
 // UseCase — бизнес-логика калькулятора.
 type UseCase struct {
-	repo   ports.IOperationRepository
-	cache  ports.ICache
-	broker ports.IProducer // опционально: если nil, в топик не шлём
-	log    *slog.Logger
+	repo      ports.IOperationRepository
+	cache     ports.ICache
+	broker    ports.IProducer
+	analytics ports.IOperationAnalytics
+	log       *slog.Logger
 }
 
-// New создаёт юзкейс калькулятора. broker может быть nil — тогда публикация в Kafka не выполняется.
-func New(repo ports.IOperationRepository, cache ports.ICache, broker ports.IProducer, log *slog.Logger) *UseCase {
-	return &UseCase{repo: repo, cache: cache, broker: broker, log: log}
+// New создаёт юзкейс калькулятора. broker и analytics могут быть nil.
+func New(repo ports.IOperationRepository, cache ports.ICache, broker ports.IProducer, analytics ports.IOperationAnalytics, log *slog.Logger) *UseCase {
+	return &UseCase{repo: repo, cache: cache, broker: broker, analytics: analytics, log: log}
 }

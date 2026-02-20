@@ -58,13 +58,11 @@ func (u *UseCase) Calculate(ctx context.Context, number1, number2 float64, opera
 		return nil, err
 	}
 
-	if u.broker != nil {
-		value, _ := json.Marshal(op)
-		if err := u.broker.Send(ctx, []byte(key), value); err != nil {
-			u.log.Warn("broker send", "key", key, "error", err)
-		} else {
-			u.log.Info("operation published", "key", key, "result", result)
-		}
+	value, _ := json.Marshal(op)
+	if err := u.broker.Send(ctx, []byte(key), value); err != nil {
+		u.log.Warn("broker send", "key", key, "error", err)
+	} else {
+		u.log.Info("operation published", "key", key, "result", result)
 	}
 
 	return &op, nil
@@ -77,6 +75,11 @@ func (u *UseCase) History(ctx context.Context) ([]domain.Operation, error) {
 
 // HandleOperationEvent вызывается консьюмером при получении сообщения из топика operations (часть ICalculatorUseCase).
 func (u *UseCase) HandleOperationEvent(ctx context.Context, op domain.Operation) error {
-	u.log.Info("operation event", "number1", op.Number1, "operation", op.Operation, "number2", op.Number2, "result", op.Result)
+	if err := u.analytics.WriteOperation(ctx, op); err != nil {
+		u.log.Warn("analytics write", "error", err)
+		return err
+	}
+	u.log.Info("operation stored to click", "number1", op.Number1, "operation", op.Operation, "number2", op.Number2, "result", op.Result)
+
 	return nil
 }

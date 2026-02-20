@@ -97,6 +97,32 @@ services:
       kafka:
         condition: service_healthy
 
+  clickhouse:
+    container_name: lizzycalc-clickhouse
+    image: clickhouse/clickhouse-server:24-alpine
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  clickhouse-ui:
+    image: ghcr.io/caioricciuti/ch-ui:latest
+    ports:
+      - "8081:5521"
+    environment:
+      # Браузер стучится в ClickHouse с хоста — нужен localhost, не имя контейнера
+      VITE_CLICKHOUSE_URL: http://localhost:8123
+      VITE_CLICKHOUSE_USER: default
+      VITE_CLICKHOUSE_PASS: ""
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
   calculator:
     container_name: lizzycalc-calculator
     build:
@@ -119,12 +145,19 @@ services:
       CALCULATOR_KAFKA_BROKERS: kafka:29092
       CALCULATOR_KAFKA_TOPIC: operations
       CALCULATOR_KAFKA_GROUP_ID: lizzycalc-app
+      CALCULATOR_CLICKHOUSE_HOST: clickhouse
+      CALCULATOR_CLICKHOUSE_PORT: "9000"
+      CALCULATOR_CLICKHOUSE_DATABASE: default
+      CALCULATOR_CLICKHOUSE_USERNAME: default
+      CALCULATOR_CLICKHOUSE_PASSWORD: ""
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      clickhouse:
         condition: service_healthy
 
 volumes:
