@@ -29,15 +29,12 @@
 | 13 | `feature-kafka-broker` | Интеграция с Kafka: после расчёта пишем в топик, консьюмер читает и логирует. Zookeeper + Kafka + Kafka UI в compose, топик operations, IProducer/ICalculatorUseCase.HandleOperationEvent. |
 | 14 | `feature-clickhouse-analytics` | Аналитика в ClickHouse: консьюмер пишет каждую операцию в колоночную БД (таблица default.operations_analytics), EnsureTable при старте, ClickHouse + CH-UI в compose, порт IOperationAnalytics. |
 | 15 | `feature-mongo-storage` | Хранилище операций в MongoDB (документная БД по коллекциям). Фича-флаг `CALCULATOR_FEATURE_PG` в конфиге: true — PostgreSQL, false — Mongo. Один интерфейс `IOperationRepository`, два адаптера (pg, mongo). MongoDB + Mongo Express в compose. |
+| 16 | `feature-unit-tests` | Юнит-тесты: table-driven тесты на логику, testify для ассертов. Покрытие функции `cacheKey`, структура `*_test.go`, команды `make test`, `make test-coverage`. |
+| 17 | `feature-mock-tests` | Моки через mockgen: `//go:generate` директивы в портах, пакет `internal/mocks`, тесты бизнес-логики (Calculate, History) с мок-зависимостями. Команда `make mocks`. |
+| 18 | `feature-integration-tests` | Интеграционные тесты с testcontainers: Docker-контейнеры для PG, Redis, Mongo, ClickHouse. Пакет `tests/integration`, проверка реального SQL и сериализации. Команда `make test-integration`. |
 | — | `main` | Текущая основная ветка. |
 
-Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC.
-
----
-
-## TODO (планируемые ветки)
-- [ ] **feature-tests** — тесты: юнит-тесты (логика use case, домен), моки для портов (репозиторий, кэш), интеграционные тесты (API или слой инфраструктуры против реальной/тестовой БД).
-
+Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC → Kafka → ClickHouse → Mongo → юнит-тесты → моки → интеграционные тесты.
 
 ---
 
