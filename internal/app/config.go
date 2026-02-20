@@ -1,38 +1,40 @@
 package app
 
 import (
-	"log"
-
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	"lizzyCalc/internal/api/grpc"
 	"lizzyCalc/internal/api/http"
 	"lizzyCalc/internal/infrastructure/click"
 	"lizzyCalc/internal/infrastructure/kafka"
+	"lizzyCalc/internal/infrastructure/mongo"
 	"lizzyCalc/internal/infrastructure/pg"
 	"lizzyCalc/internal/infrastructure/redis"
+	"log"
 )
 
 const AppName = "CALCULATOR"
 
-// GrpcConfig — настройки gRPC-сервера. Переменные: CALCULATOR_GRPC_HOST, CALCULATOR_GRPC_PORT.
-type GrpcConfig struct {
-	Host string `env:"HOST" default:"0.0.0.0"`
-	Port string `env:"PORT" default:"9090"`
+// FeatureFlags — фича-флаги. Переменные: CALCULATOR_FEATURE_FLAGS_*.
+type FeatureFlags struct {
+	UsePGStorage bool `envconfig:"PG"`
 }
 
 // Config — конфиг приложения. Заполняется через envconfig с префиксом CALCULATOR.
 type Config struct {
-	Server http.ServerConfig `env:"SERVER"`
-	Grpc   GrpcConfig        `env:"GRPC"`
-	DB     pg.Config         `env:"DB"`
-	Redis      redis.Config      `env:"REDIS"`
-	Kafka      kafka.Config      `env:"KAFKA"`
-	ClickHouse click.Config      `env:"CLICKHOUSE"`
+	Server       http.ServerConfig `envconfig:"SERVER"`
+	Grpc         grpc.Config       `envconfig:"GRPC"`
+	FeatureFlags FeatureFlags      `envconfig:"FEATURE"`
+	DB           pg.Config         `envconfig:"DB"`
+	Redis        redis.Config      `envconfig:"REDIS"`
+	Kafka        kafka.Config      `envconfig:"KAFKA"`
+	ClickHouse   click.Config      `envconfig:"CLICKHOUSE"`
+	Mongo        mongo.Config      `envconfig:"MONGO"`
 }
 
 // LoadCfg загружает конфиг: подтягивает .env (godotenv), затем заполняет структуру из окружения (envconfig).
 func LoadCfg() (Config, error) {
-	if err := godotenv.Load("/Users/admin/liz education/lizzyCalc/deployment/localCalc/.env"); err != nil {
+	if err := godotenv.Load("deployment/localCalc/.env"); err != nil {
 		log.Printf("config: .env не найден, используем окружение: %v", err)
 	}
 

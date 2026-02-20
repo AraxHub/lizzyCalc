@@ -10,12 +10,12 @@ import (
 
 // Config — настройки подключения к PostgreSQL.
 type Config struct {
-	Host     string `env:"HOST" default:"localhost"`
-	Port     string `env:"PORT" default:"5433"`
-	User     string `env:"USER" default:"postgres"`
-	Password string `env:"PASSWORD" default:"postgres"`
-	DBName   string `env:"NAME" default:"lizzycalc"`
-	SSLMode  string `env:"SSLMODE" default:"disable"`
+	Host     string `envconfig:"HOST" default:"localhost"`
+	Port     string `envconfig:"PORT" default:"5433"`
+	User     string `envconfig:"USER" default:"postgres"`
+	Password string `envconfig:"PASSWORD" default:"postgres"`
+	DBName   string `envconfig:"NAME" default:"lizzycalc"`
+	SSLMode  string `envconfig:"SSLMODE" default:"disable"`
 }
 
 // DSN возвращает строку подключения для lib/pq.

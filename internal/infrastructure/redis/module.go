@@ -9,10 +9,10 @@ import (
 
 // Config — настройки подключения к Redis.
 type Config struct {
-	Host string `env:"HOST" default:"localhost"`
-	Port string `env:"PORT" default:"6379"`
-	Password string `env:"PASSWORD" default:""`
-	DB       int    `env:"DB" default:"0"`
+	Host     string `envconfig:"HOST" default:"localhost"`
+	Port     string `envconfig:"PORT" default:"6379"`
+	Password string `envconfig:"PASSWORD" default:""`
+	DB       int    `envconfig:"DB" default:"0"`
 }
 
 // Addr возвращает адрес "host:port".

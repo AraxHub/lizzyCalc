@@ -15,9 +15,11 @@ import (
 	"lizzyCalc/internal/api/http/controllers/system"
 	"lizzyCalc/internal/infrastructure/click"
 	"lizzyCalc/internal/infrastructure/kafka"
+	"lizzyCalc/internal/infrastructure/mongo"
 	"lizzyCalc/internal/infrastructure/pg"
 	"lizzyCalc/internal/infrastructure/redis"
 	"lizzyCalc/internal/pkg/logger"
+	"lizzyCalc/internal/ports"
 	calclUsecase "lizzyCalc/internal/usecase/calculator"
 )
 
@@ -33,14 +35,29 @@ func New(cfg Config) *App {
 
 // Run подключается к БД и Redis, инициализирует зависимости и запускает HTTP-сервер (блокирующий вызов).
 func (a *App) Run() error {
-	db, err := pg.New(&a.cfg.DB)
-	if err != nil {
-		return fmt.Errorf("db: %w", err)
-	}
-	defer db.Close()
+	log := logger.New()
+	slog.SetDefault(log)
 
-	if err := pg.Migrate(context.Background(), db); err != nil {
-		return fmt.Errorf("migrate: %w", err)
+	var repo ports.IOperationRepository
+	if a.cfg.FeatureFlags.UsePGStorage {
+		db, err := pg.New(&a.cfg.DB)
+		if err != nil {
+			return fmt.Errorf("db: %w", err)
+		}
+		defer db.Close()
+		if err := pg.Migrate(context.Background(), db); err != nil {
+			return fmt.Errorf("migrate: %w", err)
+		}
+		repo = pg.NewOperationRepo(db, log)
+		log.Info("storage: PostgreSQL")
+	} else {
+		mongoClient, err := mongo.New(context.Background(), &a.cfg.Mongo)
+		if err != nil {
+			return fmt.Errorf("mongo: %w", err)
+		}
+		defer func() { _ = mongoClient.Disconnect(context.Background()) }()
+		repo = mongo.NewOperationRepo(mongoClient, log)
+		log.Info("storage: MongoDB")
 	}
 
 	rdb, err := redis.New(&a.cfg.Redis)
@@ -49,10 +66,6 @@ func (a *App) Run() error {
 	}
 	defer rdb.Close()
 
-	log := logger.New()
-	slog.SetDefault(log)
-
-	repo := pg.NewOperationRepo(db, log)
 	cache := redis.NewCache(rdb, log)
 
 	prod := kafka.NewProducer(&a.cfg.Kafka)

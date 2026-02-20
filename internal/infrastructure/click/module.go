@@ -10,11 +10,11 @@ import (
 
 // Config — настройки подключения к ClickHouse. Переменные: CALCULATOR_CLICKHOUSE_HOST, PORT, DATABASE, USERNAME, PASSWORD.
 type Config struct {
-	Host     string `env:"HOST" default:"localhost"`
-	Port     string `env:"PORT" default:"9000"`
-	Database string `env:"DATABASE" default:"default"`
-	Username string `env:"USERNAME" default:"default"`
-	Password string `env:"PASSWORD" default:""`
+	Host     string `envconfig:"HOST" default:"localhost"`
+	Port     string `envconfig:"PORT" default:"9000"`
+	Database string `envconfig:"DATABASE" default:"default"`
+	Username string `envconfig:"USERNAME" default:"default"`
+	Password string `envconfig:"PASSWORD" default:""`
 }
 
 // Addr возвращает адрес "host:port" для нативного протокола.

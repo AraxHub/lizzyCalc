@@ -8,9 +8,9 @@ import (
 
 // Config — настройки Kafka. Переменные: CALCULATOR_KAFKA_BROKERS, CALCULATOR_KAFKA_TOPIC, CALCULATOR_KAFKA_GROUP_ID.
 type Config struct {
-	Brokers  string `env:"BROKERS" default:"localhost:9092"`   // через запятую, если несколько
-	Topic    string `env:"TOPIC" default:"lizzycalc"`
-	GroupID  string `env:"GROUP_ID" default:"lizzycalc-app"`  // для consumer group
+	Brokers string `envconfig:"BROKERS" default:"localhost:9092"` // через запятую, если несколько
+	Topic   string `envconfig:"TOPIC" default:"lizzycalc"`
+	GroupID string `envconfig:"GROUP_ID" default:"lizzycalc-app"` // для consumer group
 }
 
 // brokersSlice возвращает список брокеров из строки (через запятую).
@@ -57,4 +57,3 @@ func (c *Client) Consumer() *Consumer {
 	})
 	return &Consumer{r: r}
 }
-

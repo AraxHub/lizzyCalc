@@ -12,8 +12,8 @@ import (
 
 // ServerConfig — настройки HTTP-сервера. Переменные: APP_SERVER_HOST, APP_SERVER_PORT.
 type ServerConfig struct {
-	Host string `env:"HOST" default:"0.0.0.0"`
-	Port string `env:"PORT" default:"8080"`
+	Host string `envconfig:"HOST" default:"0.0.0.0"`
+	Port string `envconfig:"PORT" default:"8080"`
 }
 
 // Controller — контракт: контроллер регистрирует свои маршруты на роутере.

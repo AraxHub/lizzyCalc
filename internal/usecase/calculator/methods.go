@@ -53,12 +53,18 @@ func (u *UseCase) Calculate(ctx context.Context, number1, number2 float64, opera
 
 	if err := u.repo.SaveOperation(ctx, op); err != nil {
 		return nil, err
+	} else {
+		u.log.Info("operation saved", "key", key, "result", result)
 	}
 	if err := u.cache.Set(ctx, key, result); err != nil {
 		return nil, err
 	}
 
-	value, _ := json.Marshal(op)
+	value, err := json.Marshal(op)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := u.broker.Send(ctx, []byte(key), value); err != nil {
 		u.log.Warn("broker send", "key", key, "error", err)
 	} else {

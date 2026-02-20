@@ -13,6 +13,12 @@ import (
 	"lizzyCalc/internal/ports"
 )
 
+// Config — настройки gRPC-сервера. Переменные: CALCULATOR_GRPC_HOST, CALCULATOR_GRPC_PORT.
+type Config struct {
+	Host string `envconfig:"HOST" default:"0.0.0.0"`
+	Port string `envconfig:"PORT" default:"9090"`
+}
+
 // Server — gRPC-сервер: регистрирует сервисы и слушает порт.
 type Server struct {
 	grpc *grpc.Server
