@@ -1,546 +1,635 @@
-# MongoDB в lizzyCalc
+# Юнит-тесты в Go: подробный гайд
 
-## Что такое MongoDB
+## Что такое юнит-тест
 
-**MongoDB** — документо-ориентированная NoSQL база данных. В отличие от реляционных БД (PostgreSQL, MySQL), где данные хранятся в таблицах со строгой схемой (строки и колонки), MongoDB хранит данные в виде **документов** — JSON-подобных объектов (формат BSON — Binary JSON).
+Юнит-тест — это тест **одной изолированной единицы кода**: функции, метода или небольшого модуля. Юнит-тесты проверяют, что конкретная функция при заданных входных данных возвращает ожидаемый результат.
 
-### Ключевые отличия от PostgreSQL
+**Ключевые характеристики юнит-тестов:**
+- Быстрые (миллисекунды)
+- Изолированные (не зависят от БД, сети, файловой системы)
+- Детерминированные (всегда один и тот же результат)
+- Тестируют одну вещь
 
-| Аспект | PostgreSQL (реляционная) | MongoDB (документная) |
-|--------|--------------------------|----------------------|
-| Единица хранения | Строка в таблице | Документ в коллекции |
-| Схема | Строгая: колонки, типы, constraints | Гибкая: документы могут иметь разные поля |
-| Связи | JOIN между таблицами | Вложенные документы или ссылки |
-| Язык запросов | SQL | MongoDB Query Language (MQL) |
-| Транзакции | ACID из коробки | ACID с версии 4.0, но реже используется |
-| Масштабирование | Вертикальное (мощнее сервер) | Горизонтальное (шардирование) |
+## Как Go находит и запускает тесты
 
-### Когда MongoDB лучше
+### Конвенции именования
 
-- **Гибкая схема**: структура данных часто меняется, разные документы имеют разные поля.
-- **Иерархические данные**: вложенные объекты, массивы — всё в одном документе.
-- **Быстрое прототипирование**: не нужно писать миграции при изменении структуры.
-- **Горизонтальное масштабирование**: шардирование «из коробки».
-- **Большие объёмы неструктурированных данных**: логи, события, каталоги товаров.
+Go использует строгие конвенции:
 
-### Когда PostgreSQL лучше
-
-- **Строгая консистентность**: финансы, заказы, где важна целостность.
-- **Сложные связи**: много JOIN'ов, нормализованная схема.
-- **Аналитика по структурированным данным**: SQL + индексы + оконные функции.
-
----
-
-## Основные понятия MongoDB
-
-### База данных (Database)
-
-Контейнер для коллекций. Одна MongoDB может содержать много баз. В проекте база называется **`lizzycalc`** (переменная `CALCULATOR_MONGO_DATABASE`).
-
-### Коллекция (Collection)
-
-Аналог таблицы в SQL. Коллекция — это набор документов. В отличие от таблицы, коллекция **не требует схемы**: документы в одной коллекции могут иметь разные поля.
-
-В проекте коллекция называется **`operations`** (переменная `CALCULATOR_MONGO_COLLECTION`).
-
-Пример: коллекция `operations` хранит документы с операциями калькулятора.
-
-### Документ (Document)
-
-Единица данных в MongoDB. Документ — это JSON-объект (хранится как BSON). У каждого документа есть уникальный идентификатор **`_id`** (генерируется автоматически, тип ObjectId).
-
-Пример документа в коллекции `operations`:
-
-```json
-{
-  "_id": ObjectId("507f1f77bcf86cd799439011"),
-  "number1": 10.5,
-  "number2": 3.0,
-  "operation": "+",
-  "result": 13.5,
-  "message": "",
-  "created_at": ISODate("2024-01-15T10:30:00Z")
-}
-```
-
-### Поле (Field)
-
-Пара «ключ-значение» в документе. Поля могут быть:
-- Примитивами: строка, число, boolean, дата.
-- Массивами: `"tags": ["math", "calc"]`.
-- Вложенными документами: `"user": { "name": "John", "age": 30 }`.
-
-### Индекс (Index)
-
-Структура для ускорения поиска. Без индекса MongoDB сканирует все документы (collection scan). С индексом — быстрый поиск по ключу.
-
-В проекте создаётся индекс по полю `created_at` (метод `EnsureIndexes`) для быстрой сортировки истории операций.
-
----
-
-## Как MongoDB устроена в lizzyCalc
-
-### Архитектура
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                        App                              │
-│  ┌─────────────┐    ┌─────────────────────────────┐     │
-│  │  Use Case   │───▶│  ports.IOperationRepository │     │
-│  └─────────────┘    └─────────────────────────────┘     │
-│                              │                          │
-│         ┌────────────────────┼────────────────────┐     │
-│         ▼                    ▼                    ▼     │
-│  ┌─────────────┐      ┌─────────────┐      ┌──────────┐ │
-│  │  pg.Repo    │      │ mongo.Repo  │      │  (...)   │ │
-│  │ (PostgreSQL)│      │ (MongoDB)   │      │          │ │
-│  └─────────────┘      └─────────────┘      └──────────┘ │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Use case** работает с интерфейсом `IOperationRepository`. Конкретная реализация (PostgreSQL или MongoDB) выбирается при старте приложения по фича-флагу `CALCULATOR_FEATURE_PG`.
-
-### Файловая структура
-
-```
-internal/infrastructure/mongo/
-├── module.go      — Config, Client, New(), EnsureIndexes()
-└── repository.go  — OperationRepo: SaveOperation, GetHistory, Ping
-```
-
-### Конфиг (module.go)
-
-```go
-type Config struct {
-    URI        string `envconfig:"URI" default:"mongodb://localhost:27017"`
-    Database   string `envconfig:"DATABASE" default:"lizzycalc"`
-    Collection string `envconfig:"COLLECTION" default:"operations"`
-}
-```
-
-Переменные окружения:
-- `CALCULATOR_MONGO_URI` — строка подключения (например `mongodb://localhost:27017` или `mongodb://user:pass@host:27017`).
-- `CALCULATOR_MONGO_DATABASE` — имя базы.
-- `CALCULATOR_MONGO_COLLECTION` — имя коллекции.
-
-### Подключение (Client)
-
-```go
-func New(ctx context.Context, cfg *Config) (*Client, error)
-```
-
-1. Вызывает `mongo.Connect(options.Client().ApplyURI(cfg.URI))`.
-2. Проверяет соединение: `client.Ping(ctx, nil)`.
-3. Возвращает обёртку `*Client` с методами `DB()`, `Coll()`.
-
-### Создание индексов (EnsureIndexes)
-
-```go
-func (c *Client) EnsureIndexes(ctx context.Context) error
-```
-
-Создаёт индекс по `created_at` (убывающий) для быстрой сортировки в `GetHistory`. Вызывается один раз при старте приложения (аналог миграций, но в MongoDB коллекция создаётся автоматически при первой вставке).
-
-### Репозиторий (repository.go)
-
-Реализует интерфейс `ports.IOperationRepository`:
-
-```go
-type IOperationRepository interface {
-    SaveOperation(ctx context.Context, op domain.Operation) error
-    GetHistory(ctx context.Context) ([]domain.Operation, error)
-    Ping(ctx context.Context) error
-}
-```
-
-#### SaveOperation
-
-Вставляет документ в коллекцию:
-
-```go
-func (r *OperationRepo) SaveOperation(ctx context.Context, op domain.Operation) error {
-    doc := operationDoc{
-        Number1:   op.Number1,
-        Number2:   op.Number2,
-        Operation: op.Operation,
-        Result:    op.Result,
-        Message:   op.Message,
-        CreatedAt: op.Timestamp,
-    }
-    _, err := r.client.Coll().InsertOne(ctx, doc)
-    return err
-}
-```
-
-#### GetHistory
-
-Читает все документы, сортирует по `created_at` (новые первые):
-
-```go
-func (r *OperationRepo) GetHistory(ctx context.Context) ([]domain.Operation, error) {
-    opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
-    cursor, err := r.client.Coll().Find(ctx, bson.M{}, opts)
-    // ... итерация по cursor, маппинг в domain.Operation
-}
-```
-
-#### Ping
-
-Проверка доступности (для health-check):
-
-```go
-func (r *OperationRepo) Ping(ctx context.Context) error {
-    return r.client.Ping(ctx, nil)
-}
-```
-
-### Структура документа
-
-```go
-type operationDoc struct {
-    Number1   float64   `bson:"number1"`
-    Number2   float64   `bson:"number2"`
-    Operation string    `bson:"operation"`
-    Result    float64   `bson:"result"`
-    Message   string    `bson:"message"`
-    CreatedAt time.Time `bson:"created_at"`
-}
-```
-
-Тег `bson:"..."` задаёт имя поля в документе MongoDB (аналог `json:"..."` для JSON).
-
----
-
-## Фича-флаг: выбор хранилища
-
-В конфиге приложения есть флаг:
-
-```go
-type FeatureFlags struct {
-    UsePGStorage bool `envconfig:"PG"`
-}
-```
-
-Переменная окружения: **`CALCULATOR_FEATURE_PG`**
-
-| Значение | Хранилище |
-|----------|-----------|
-| `true`, `1`, `yes` | PostgreSQL |
-| `false`, `0`, `no` | MongoDB |
-
-При старте приложения (`app.Run`):
-
-```go
-if a.cfg.FeatureFlags.UsePGStorage {
-    // подключение к PostgreSQL, миграции, pg.NewOperationRepo
-    log.Info("storage: PostgreSQL")
-} else {
-    // подключение к MongoDB, mongo.NewOperationRepo
-    log.Info("storage: MongoDB")
-}
-```
-
----
-
-## Docker Compose
-
-В `deployment/localCalc/docker-compose.yml` подняты:
-
-### Сервис `mongodb`
-
-```yaml
-mongodb:
-  container_name: lizzycalc-mongodb
-  image: mongo:7
-  ports:
-    - "27017:27017"
-  healthcheck:
-    test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-    interval: 5s
-    timeout: 5s
-    retries: 5
-```
-
-- **Порт 27017** — стандартный порт MongoDB.
-- **Healthcheck** — команда `mongosh` проверяет, что сервер отвечает.
-
-### Сервис `mongo-express`
-
-```yaml
-mongo-express:
-  container_name: lizzycalc-mongo-express
-  image: mongo-express:1.0.2-20-alpine3.19
-  ports:
-    - "8082:8081"
-  environment:
-    ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
-    ME_CONFIG_BASICAUTH: "false"
-  depends_on:
-    mongodb:
-      condition: service_healthy
-```
-
-**Mongo Express** — веб-интерфейс для MongoDB (аналог Redis Insight для Redis, Kafka UI для Kafka).
-
-- **URL:** http://localhost:8082
-- **Функции:** просмотр баз, коллекций, документов; выполнение запросов; редактирование.
-
-### Calculator: переменные MongoDB
-
-```yaml
-calculator:
-  environment:
-    CALCULATOR_FEATURE_PG: "true"  # или "false" для MongoDB
-    CALCULATOR_MONGO_URI: mongodb://mongodb:27017
-    CALCULATOR_MONGO_DATABASE: lizzycalc
-    CALCULATOR_MONGO_COLLECTION: operations
-```
-
----
-
-## Локальная разработка
-
-### Запуск с MongoDB
-
-1. В `.env` установи:
+1. **Файлы тестов** — имя заканчивается на `_test.go`:
    ```
-   CALCULATOR_FEATURE_PG=false
+   module.go       ← исходный код
+   module_test.go  ← тесты для module.go
    ```
 
-2. Подними контейнеры:
-   ```bash
-   docker compose -f deployment/localCalc/docker-compose.yml up -d
+2. **Тестовые функции** — имя начинается с `Test` и принимает `*testing.T`:
+   ```go
+   func TestCacheKey(t *testing.T) { ... }
+   func TestCalculate(t *testing.T) { ... }
    ```
 
-3. Проверь логи калькулятора:
-   ```bash
-   docker logs lizzycalc-calculator 2>&1 | grep storage
-   # storage: MongoDB
+3. **Пакет тестов** — тот же пакет, что и тестируемый код:
+   ```go
+   // module.go
+   package calculator
+   
+   // module_test.go
+   package calculator  // тот же пакет — видит приватные функции
    ```
 
-4. Открой Mongo Express: http://localhost:8082
-   - База: `lizzycalc`
-   - Коллекция: `operations`
+### Почему `_test.go` не компилируется в бинарник
 
-### Запуск Go-приложения локально (без Docker)
+Компилятор Go **игнорирует** файлы `*_test.go` при обычной сборке (`go build`). Они компилируются **только** при запуске `go test`. Это значит:
+- Тесты не увеличивают размер production-бинарника
+- Тестовые зависимости не попадают в production
+- Можно спокойно держать тесты рядом с кодом
 
-1. Убедись, что MongoDB запущена (контейнер или локальная установка).
+### Как работает `go test`
 
-2. В `.env`:
-   ```
-   CALCULATOR_FEATURE_PG=false
-   CALCULATOR_MONGO_URI=mongodb://localhost:27017
-   CALCULATOR_MONGO_DATABASE=lizzycalc
-   CALCULATOR_MONGO_COLLECTION=operations
-   ```
+Когда запускаешь `go test ./...`, происходит следующее:
 
-3. Запусти:
-   ```bash
-   go run cmd/calculator/main.go
-   ```
+1. Go находит все пакеты в указанном пути
+2. Для каждого пакета ищет файлы `*_test.go`
+3. Компилирует пакет вместе с тестами во временный бинарник
+4. Запускает бинарник
+5. Бинарник ищет функции `Test*` и выполняет их
+6. Выводит результаты и удаляет временный бинарник
 
----
+## Запуск тестов
 
-## Работа с MongoDB через mongosh
-
-**mongosh** — официальный CLI-клиент MongoDB.
-
-### Подключение к контейнеру
+### Базовые команды
 
 ```bash
-docker exec -it lizzycalc-mongodb mongosh
+# Запустить все тесты в проекте
+go test ./...
+
+# Запустить тесты в конкретном пакете
+go test ./internal/usecase/calculator/...
+
+# Запустить с подробным выводом (verbose)
+go test ./... -v
+
+# Запустить конкретный тест по имени (регулярное выражение)
+go test ./... -run TestCacheKey
+
+# Запустить подтест
+go test ./... -run TestCacheKey/сложение_целых
+
+# Запустить тесты с race detector (ищет data races)
+go test ./... -race
+
+# Показать покрытие кода
+go test ./... -cover
+
+# Сгенерировать HTML-отчёт о покрытии
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
 ```
 
-### Основные команды
+### Флаги `go test`
 
-```javascript
-// Показать базы
-show dbs
+| Флаг | Описание |
+|------|----------|
+| `-v` | Verbose — показывает имя каждого теста |
+| `-run <regex>` | Запускает только тесты, соответствующие регулярке |
+| `-count N` | Запускает каждый тест N раз (полезно для flaky-тестов) |
+| `-timeout 30s` | Таймаут на весь тестовый прогон (по умолчанию 10m) |
+| `-short` | Пропускает долгие тесты (если они проверяют `testing.Short()`) |
+| `-race` | Включает race detector |
+| `-cover` | Показывает процент покрытия |
+| `-coverprofile=file` | Записывает данные покрытия в файл |
+| `-parallel N` | Максимум N тестов параллельно |
 
-// Переключиться на базу
-use lizzycalc
+## Структура теста
 
-// Показать коллекции
-show collections
+### Простой тест
 
-// Показать все документы
-db.operations.find()
-
-// Показать последние 5 операций
-db.operations.find().sort({ created_at: -1 }).limit(5)
-
-// Найти операции сложения
-db.operations.find({ operation: "+" })
-
-// Посчитать количество документов
-db.operations.countDocuments()
-
-// Удалить все документы (осторожно!)
-db.operations.deleteMany({})
-
-// Показать индексы
-db.operations.getIndexes()
+```go
+func TestAdd(t *testing.T) {
+    result := Add(2, 3)
+    if result != 5 {
+        t.Errorf("Add(2, 3) = %d, want 5", result)
+    }
+}
 ```
 
-### Примеры запросов
+### Объект `*testing.T`
 
-```javascript
-// Все операции с результатом > 100
-db.operations.find({ result: { $gt: 100 } })
+`*testing.T` — это объект, через который тест взаимодействует с тестовым фреймворком:
 
-// Операции за последний час
-db.operations.find({
-  created_at: { $gte: new Date(Date.now() - 3600000) }
-})
-
-// Группировка по типу операции
-db.operations.aggregate([
-  { $group: { _id: "$operation", count: { $sum: 1 } } }
-])
-
-// Средний результат по типу операции
-db.operations.aggregate([
-  { $group: { _id: "$operation", avgResult: { $avg: "$result" } } }
-])
+```go
+func TestExample(t *testing.T) {
+    // Логирование (видно только при -v или при падении теста)
+    t.Log("информационное сообщение")
+    t.Logf("форматированное: %d", 42)
+    
+    // Пометить тест как проваленный, но продолжить выполнение
+    t.Error("что-то пошло не так")
+    t.Errorf("ошибка: %v", err)
+    
+    // Пометить как проваленный и немедленно остановить
+    t.Fatal("критическая ошибка")
+    t.Fatalf("критическая: %v", err)
+    
+    // Пропустить тест
+    t.Skip("пропускаем — причина")
+    t.Skipf("пропускаем: %s", reason)
+    
+    // Запустить подтест
+    t.Run("subtest name", func(t *testing.T) {
+        // ...
+    })
+    
+    // Пометить, что тест можно запускать параллельно
+    t.Parallel()
+    
+    // Получить имя теста
+    name := t.Name()
+    
+    // Создать временную директорию (удалится автоматически)
+    dir := t.TempDir()
+}
 ```
 
----
+## Table-Driven Tests (табличные тесты)
 
-## Go-драйвер: go.mongodb.org/mongo-driver/v2
+Это **главный паттерн** тестирования в Go. Вместо копипасты создаёшь таблицу тест-кейсов:
+
+```go
+func TestCacheKey(t *testing.T) {
+    // Таблица тест-кейсов
+    tests := []struct {
+        name      string  // имя подтеста (для вывода)
+        number1   float64 // входные данные
+        number2   float64
+        operation string
+        want      string  // ожидаемый результат
+    }{
+        {
+            name:      "сложение целых",
+            number1:   10,
+            number2:   5,
+            operation: "+",
+            want:      "10 + 5",
+        },
+        {
+            name:      "отрицательные числа",
+            number1:   -10,
+            number2:   -5,
+            operation: "+",
+            want:      "-10 + -5",
+        },
+        // ... добавляй сколько угодно кейсов
+    }
+
+    // Цикл по всем кейсам
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := cacheKey(tt.number1, tt.number2, tt.operation)
+            if got != tt.want {
+                t.Errorf("cacheKey(%v, %v, %q) = %q, want %q",
+                    tt.number1, tt.number2, tt.operation, got, tt.want)
+            }
+        })
+    }
+}
+```
+
+### Почему table-driven?
+
+1. **Легко добавлять кейсы** — просто ещё одна строчка в таблице
+2. **Нет копипасты** — логика теста в одном месте
+3. **Читаемость** — сразу видны все входы и выходы
+4. **Подтесты** — `t.Run()` создаёт именованные подтесты, можно запускать по отдельности
+5. **Параллельность** — можно добавить `t.Parallel()` в подтест
+
+### Вывод table-driven теста
+
+```
+=== RUN   TestCacheKey
+=== RUN   TestCacheKey/сложение_целых
+=== RUN   TestCacheKey/отрицательные_числа
+--- PASS: TestCacheKey (0.00s)
+    --- PASS: TestCacheKey/сложение_целых (0.00s)
+    --- PASS: TestCacheKey/отрицательные_числа (0.00s)
+```
+
+## Тестирование ошибок
+
+```go
+func TestDivide(t *testing.T) {
+    tests := []struct {
+        name    string
+        a, b    float64
+        want    float64
+        wantErr bool // ожидаем ошибку?
+    }{
+        {"нормальное деление", 10, 2, 5, false},
+        {"деление на ноль", 10, 0, 0, true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got, err := Divide(tt.a, tt.b)
+            
+            // Проверяем, что ошибка есть/нет как ожидалось
+            if (err != nil) != tt.wantErr {
+                t.Errorf("Divide() error = %v, wantErr %v", err, tt.wantErr)
+                return
+            }
+            
+            // Если ошибки не ожидали, проверяем результат
+            if !tt.wantErr && got != tt.want {
+                t.Errorf("Divide() = %v, want %v", got, tt.want)
+            }
+        })
+    }
+}
+```
+
+## Testify — популярная библиотека для ассертов
+
+Стандартная библиотека Go не имеет ассертов — только `t.Error/t.Fatal`. Testify добавляет удобные ассерты.
 
 ### Установка
 
 ```bash
-go get go.mongodb.org/mongo-driver/v2/mongo
+go get github.com/stretchr/testify
 ```
 
-### Импорты
+### Пакет `assert`
+
+`assert` — при неудаче тест **продолжается** (как `t.Error`):
 
 ```go
 import (
-    "go.mongodb.org/mongo-driver/v2/bson"
-    "go.mongodb.org/mongo-driver/v2/mongo"
-    "go.mongodb.org/mongo-driver/v2/mongo/options"
+    "testing"
+    "github.com/stretchr/testify/assert"
 )
+
+func TestWithAssert(t *testing.T) {
+    result := Calculate(10, 5, "+")
+    
+    // Проверка равенства
+    assert.Equal(t, 15.0, result.Result)
+    assert.Equal(t, "+", result.Operation)
+    
+    // Проверка на nil
+    assert.Nil(t, err)
+    assert.NotNil(t, result)
+    
+    // Булевы проверки
+    assert.True(t, result.Result > 0)
+    assert.False(t, result.Result < 0)
+    
+    // Проверка ошибки
+    assert.NoError(t, err)
+    assert.Error(t, err) // ожидаем ошибку
+    
+    // Проверка содержимого строки
+    assert.Contains(t, result.Message, "success")
+    
+    // Проверка типа ошибки
+    assert.ErrorIs(t, err, ErrDivisionByZero)
+    
+    // Сообщение при падении
+    assert.Equal(t, 15.0, result.Result, "результат сложения должен быть 15")
+}
 ```
 
-### Подключение (v2)
+### Пакет `require`
+
+`require` — при неудаче тест **останавливается** (как `t.Fatal`):
 
 ```go
-client, err := mongo.Connect(options.Client().ApplyURI("mongodb://localhost:27017"))
+import (
+    "testing"
+    "github.com/stretchr/testify/require"
+)
+
+func TestWithRequire(t *testing.T) {
+    result, err := Calculate(10, 5, "+")
+    
+    // Если err != nil, тест сразу падает — нет смысла проверять result
+    require.NoError(t, err)
+    require.NotNil(t, result)
+    
+    // Дальше можно безопасно работать с result
+    assert.Equal(t, 15.0, result.Result)
+}
+```
+
+### Когда что использовать
+
+- **`require`** — для предусловий: если не выполнится, дальнейшие проверки бессмысленны
+- **`assert`** — для обычных проверок: хотим увидеть все упавшие ассерты сразу
+
+```go
+func TestExample(t *testing.T) {
+    // require — если упадёт, дальше проверять нечего
+    result, err := DoSomething()
+    require.NoError(t, err)
+    require.NotNil(t, result)
+    
+    // assert — проверяем все поля, даже если первое упало
+    assert.Equal(t, "expected", result.Field1)
+    assert.Equal(t, 42, result.Field2)
+    assert.True(t, result.IsValid)
+}
+```
+
+### Сравнение: стандартный vs testify
+
+**Стандартный Go:**
+```go
+if result != 15 {
+    t.Errorf("got %d, want 15", result)
+}
 if err != nil {
-    return err
+    t.Fatalf("unexpected error: %v", err)
 }
-defer client.Disconnect(context.Background())
-
-// Проверка соединения
-err = client.Ping(context.Background(), nil)
 ```
 
-**Важно:** в v2 функция `Connect` **не принимает context** (в отличие от v1). Context передаётся в `Ping` и другие операции.
+**С testify:**
+```go
+assert.Equal(t, 15, result)
+require.NoError(t, err)
+```
 
-### Вставка документа
+### Полный список ассертов testify
 
 ```go
-coll := client.Database("lizzycalc").Collection("operations")
+// Равенство
+assert.Equal(t, expected, actual)
+assert.NotEqual(t, unexpected, actual)
+assert.EqualValues(t, expected, actual) // с приведением типов
 
-doc := bson.M{
-    "number1":    10.5,
-    "number2":    3.0,
-    "operation":  "+",
-    "result":     13.5,
-    "message":    "",
-    "created_at": time.Now(),
-}
+// Nil
+assert.Nil(t, obj)
+assert.NotNil(t, obj)
 
-result, err := coll.InsertOne(context.Background(), doc)
-fmt.Println("Inserted ID:", result.InsertedID)
+// Булевы
+assert.True(t, condition)
+assert.False(t, condition)
+
+// Ошибки
+assert.NoError(t, err)
+assert.Error(t, err)
+assert.ErrorIs(t, err, targetErr)
+assert.ErrorAs(t, err, &targetType)
+assert.ErrorContains(t, err, "substring")
+
+// Строки
+assert.Contains(t, str, substring)
+assert.NotContains(t, str, substring)
+assert.Empty(t, str)
+assert.NotEmpty(t, str)
+assert.Regexp(t, regexp, str)
+
+// Коллекции
+assert.Len(t, slice, expectedLen)
+assert.Empty(t, slice)
+assert.NotEmpty(t, slice)
+assert.Contains(t, slice, element)
+assert.ElementsMatch(t, expected, actual) // те же элементы, любой порядок
+
+// Числа
+assert.Greater(t, a, b)
+assert.GreaterOrEqual(t, a, b)
+assert.Less(t, a, b)
+assert.LessOrEqual(t, a, b)
+assert.InDelta(t, expected, actual, delta) // для float с погрешностью
+
+// Типы
+assert.IsType(t, expectedType, actual)
+assert.Implements(t, (*Interface)(nil), obj)
+
+// Паника
+assert.Panics(t, func() { panicFunc() })
+assert.NotPanics(t, func() { safeFunc() })
+assert.PanicsWithValue(t, "panic message", func() { ... })
 ```
 
-### Чтение документов
+## Пример: переписываем тест с testify
+
+**Было (стандартная библиотека):**
 
 ```go
-// Все документы
-cursor, err := coll.Find(context.Background(), bson.M{})
-defer cursor.Close(context.Background())
+func TestCacheKey(t *testing.T) {
+    tests := []struct {
+        name      string
+        number1   float64
+        number2   float64
+        operation string
+        want      string
+    }{
+        {"сложение", 10, 5, "+", "10 + 5"},
+        {"вычитание", 10, 5, "-", "10 - 5"},
+    }
 
-var results []bson.M
-err = cursor.All(context.Background(), &results)
-
-// С фильтром и сортировкой
-filter := bson.M{"operation": "+"}
-opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetLimit(10)
-cursor, err := coll.Find(context.Background(), filter, opts)
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := cacheKey(tt.number1, tt.number2, tt.operation)
+            if got != tt.want {
+                t.Errorf("cacheKey(%v, %v, %q) = %q, want %q",
+                    tt.number1, tt.number2, tt.operation, got, tt.want)
+            }
+        })
+    }
+}
 ```
 
-### Создание индекса
+**Стало (с testify):**
 
 ```go
-indexModel := mongo.IndexModel{
-    Keys:    bson.D{{Key: "created_at", Value: -1}},
-    Options: options.Index().SetName("created_at_desc"),
+import (
+    "testing"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestCacheKey(t *testing.T) {
+    tests := []struct {
+        name      string
+        number1   float64
+        number2   float64
+        operation string
+        want      string
+    }{
+        {"сложение", 10, 5, "+", "10 + 5"},
+        {"вычитание", 10, 5, "-", "10 - 5"},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := cacheKey(tt.number1, tt.number2, tt.operation)
+            assert.Equal(t, tt.want, got)
+        })
+    }
 }
-_, err := coll.Indexes().CreateOne(context.Background(), indexModel)
 ```
 
----
+## Хелперы: `t.Helper()`
 
-## BSON: типы данных
+Если пишешь вспомогательную функцию для тестов, добавь `t.Helper()` — тогда при падении Go покажет строку вызова хелпера, а не строку внутри хелпера:
 
-**BSON** (Binary JSON) — формат хранения в MongoDB. Поддерживает больше типов, чем JSON.
+```go
+func assertOperation(t *testing.T, op *Operation, expectedResult float64) {
+    t.Helper() // без этого ошибка покажет строку ниже, а не место вызова
+    
+    if op.Result != expectedResult {
+        t.Errorf("Result = %v, want %v", op.Result, expectedResult)
+    }
+}
 
-| BSON-тип | Go-тип | Пример |
-|----------|--------|--------|
-| String | `string` | `"hello"` |
-| Int32 | `int32` | `42` |
-| Int64 | `int64` | `9223372036854775807` |
-| Double | `float64` | `3.14` |
-| Boolean | `bool` | `true` |
-| Date | `time.Time` | `ISODate("2024-01-15T10:30:00Z")` |
-| ObjectId | `primitive.ObjectID` | `ObjectId("507f1f77bcf86cd799439011")` |
-| Array | `[]any` | `["a", "b", "c"]` |
-| Embedded Document | `struct` или `bson.M` | `{ "nested": "value" }` |
-| Null | `nil` | `null` |
+func TestCalculate(t *testing.T) {
+    op := Calculate(10, 5, "+")
+    assertOperation(t, op, 15) // ← ошибка покажет эту строку
+}
+```
 
-### bson.M vs bson.D
+## Параллельные тесты
 
-- **`bson.M`** — map (`map[string]any`), порядок полей **не гарантирован**.
-- **`bson.D`** — slice of key-value pairs, порядок полей **сохраняется**.
+```go
+func TestParallel(t *testing.T) {
+    tests := []struct {
+        name string
+        // ...
+    }{
+        {"test1", ...},
+        {"test2", ...},
+    }
 
-Используй `bson.D` для:
-- Сортировки: `bson.D{{Key: "created_at", Value: -1}}`
-- Индексов
-- Запросов, где важен порядок
+    for _, tt := range tests {
+        tt := tt // ВАЖНО: захват переменной для замыкания
+        t.Run(tt.name, func(t *testing.T) {
+            t.Parallel() // этот подтест может выполняться параллельно с другими
+            // ...
+        })
+    }
+}
+```
 
-Используй `bson.M` для:
-- Простых фильтров: `bson.M{"operation": "+"}`
-- Документов для вставки (если порядок не важен)
+## Setup и Teardown
 
----
+### Для одного теста
 
-## Сравнение: SQL vs MongoDB Query
+```go
+func TestWithSetup(t *testing.T) {
+    // Setup
+    tempFile := createTempFile(t)
+    
+    // Teardown (выполнится в конце теста или при t.Fatal)
+    t.Cleanup(func() {
+        os.Remove(tempFile)
+    })
+    
+    // Тест
+    // ...
+}
+```
 
-| Операция | SQL (PostgreSQL) | MongoDB |
-|----------|------------------|---------|
-| Выбрать все | `SELECT * FROM operations` | `db.operations.find()` |
-| С условием | `SELECT * FROM operations WHERE operation = '+'` | `db.operations.find({ operation: "+" })` |
-| Сортировка | `ORDER BY created_at DESC` | `.sort({ created_at: -1 })` |
-| Лимит | `LIMIT 10` | `.limit(10)` |
-| Подсчёт | `SELECT COUNT(*) FROM operations` | `db.operations.countDocuments()` |
-| Вставка | `INSERT INTO operations (...) VALUES (...)` | `db.operations.insertOne({...})` |
-| Обновление | `UPDATE operations SET result = 10 WHERE id = 1` | `db.operations.updateOne({ _id: ... }, { $set: { result: 10 } })` |
-| Удаление | `DELETE FROM operations WHERE id = 1` | `db.operations.deleteOne({ _id: ... })` |
-| Группировка | `SELECT operation, COUNT(*) FROM operations GROUP BY operation` | `db.operations.aggregate([{ $group: { _id: "$operation", count: { $sum: 1 } } }])` |
+### TestMain — для всего пакета
 
----
+```go
+func TestMain(m *testing.M) {
+    // Setup для всех тестов пакета
+    setupDB()
+    
+    // Запуск всех тестов
+    code := m.Run()
+    
+    // Teardown
+    teardownDB()
+    
+    os.Exit(code)
+}
+```
 
-## Резюме
+## Покрытие кода (Coverage)
 
-1. **MongoDB** — документная NoSQL БД, хранит JSON-подобные документы в коллекциях.
-2. **Коллекция** — аналог таблицы, но без строгой схемы.
-3. **Документ** — JSON-объект с полями; у каждого есть `_id`.
-4. **В проекте** MongoDB используется как альтернативное хранилище операций (вместо PostgreSQL).
-5. **Выбор хранилища** — по фича-флагу `CALCULATOR_FEATURE_PG` (true = PG, false = Mongo).
-6. **Интерфейс** `IOperationRepository` един для обоих хранилищ — бизнес-логика не знает, куда пишет.
-7. **Mongo Express** (http://localhost:8082) — веб-UI для просмотра и редактирования данных.
-8. **mongosh** — CLI для запросов и администрирования.
+```bash
+# Показать процент покрытия
+go test ./... -cover
+
+# Сохранить в файл и сгенерировать HTML
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+
+# Показать покрытие по функциям
+go tool cover -func=coverage.out
+```
+
+**Что значит процент покрытия:**
+- 80%+ — хорошо для бизнес-логики
+- 100% — не всегда нужно, иногда избыточно
+- Покрытие не гарантирует качество тестов — можно иметь 100% покрытия с бесполезными тестами
+
+## Частые ошибки
+
+### 1. Не захватил переменную в параллельном тесте
+
+```go
+// НЕПРАВИЛЬНО — все подтесты используют последний tt
+for _, tt := range tests {
+    t.Run(tt.name, func(t *testing.T) {
+        t.Parallel()
+        // tt здесь — всегда последний элемент!
+    })
+}
+
+// ПРАВИЛЬНО
+for _, tt := range tests {
+    tt := tt // захватываем
+    t.Run(tt.name, func(t *testing.T) {
+        t.Parallel()
+        // tt — правильный
+    })
+}
+```
+
+### 2. Используешь `t.Error` вместо `t.Fatal` для критичных проверок
+
+```go
+// НЕПРАВИЛЬНО — если result == nil, следующая строка — паника
+result, err := DoSomething()
+if err != nil {
+    t.Errorf("error: %v", err) // тест продолжится!
+}
+fmt.Println(result.Value) // ПАНИКА если result == nil
+
+// ПРАВИЛЬНО
+if err != nil {
+    t.Fatalf("error: %v", err) // тест остановится
+}
+```
+
+### 3. Тестируешь приватные функции через публичный API
+
+Иногда лучше тестировать приватную функцию напрямую (если она в том же пакете), а не через сложный публичный API.
+
+## Структура проекта с тестами
+
+```
+internal/
+└── usecase/
+    └── calculator/
+        ├── module.go           ← код
+        ├── module_test.go      ← тесты для module.go
+        ├── methods.go          ← код
+        └── methods_test.go     ← тесты для methods.go
+```
+
+**Правило:** тест-файл лежит рядом с исходником и имеет то же имя + `_test.go`.
+
+## Полезные команды
+
+```bash
+# Запустить все тесты
+make test
+
+# Запустить с verbose
+make test-v
+
+# Покрытие
+make test-coverage
+```

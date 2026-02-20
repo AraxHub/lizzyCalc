@@ -20,6 +20,7 @@ DOWN_VOL_ARGS := $(if $(filter 1,$(DROP_VOLUMES)),-v,)
 .PHONY: backend-from-zero backend-app backend-down backend-build backend-up
 .PHONY: frontend-from-zero frontend-app frontend-down frontend-build frontend-up
 .PHONY: kafka-create-topic
+.PHONY: test test-v test-coverage test-run
 
 help:
 	@echo "Бэкенд:"
@@ -38,6 +39,12 @@ help:
 	@echo ""
 	@echo "Опционально:"
 	@echo "  make kafka-create-topic — создать топик operations в Kafka"
+	@echo ""
+	@echo "Тесты:"
+	@echo "  make test               — запустить все тесты"
+	@echo "  make test-v             — тесты с verbose"
+	@echo "  make test-coverage      — тесты + HTML-отчёт о покрытии (coverage.html)"
+	@echo "  make test-run NAME=...  — запустить тест по имени (NAME=TestCacheKey)"
 
 # --- Backend ---
 
@@ -91,3 +98,23 @@ frontend-app: frontend-build frontend-up
 
 kafka-create-topic:
 	docker exec lizzycalc-kafka kafka-topics --create --bootstrap-server localhost:29092 --topic operations --partitions 3 --replication-factor 1 2>/dev/null || true
+
+# --- Tests ---
+
+.PHONY: test test-v test-coverage test-run
+
+# Запустить все тесты
+test:
+	go test ./...
+
+# Запустить тесты с verbose
+test-v:
+	go test ./... -v
+
+# Тесты с покрытием + HTML-отчёт
+test-coverage:
+	go test ./... -coverprofile=coverage.out
+
+# Запустить конкретный тест по имени (usage: make test-run NAME=TestCacheKey)
+test-run:
+	go test ./... -v -run $(NAME)
