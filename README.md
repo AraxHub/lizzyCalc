@@ -14,6 +14,7 @@
 
 | № | Ветка | Что внутри |
 |---|-------|------------|
+| — | `main` | Текущая основная ветка. |
 | 1 | `feature-simple-storage` | Бизнес-логика (usecase), слайс как хранилище, ручные запросы в main, вывод истории. Без HTTP. |
 | 2 | `feature-simple-handler` | Простейший HTTP-сервер, один хэндлер (JSON → расчёт → ответ). Без Gin. |
 | 3 | `feature-simpleHandler-simpleStorage` | Калькулятор по HTTP: хэндлеры + usecase + сохранение в слайс + эндпоинт истории. |
@@ -32,9 +33,9 @@
 | 16 | `feature-unit-tests` | Юнит-тесты: table-driven тесты на логику, testify для ассертов. Покрытие функции `cacheKey`, структура `*_test.go`, команды `make test`, `make test-coverage`. |
 | 17 | `feature-mock-tests` | Моки через mockgen: `//go:generate` директивы в портах, пакет `internal/mocks`, тесты бизнес-логики (Calculate, History) с мок-зависимостями. Команда `make mocks`. |
 | 18 | `feature-integration-tests` | Интеграционные тесты с testcontainers: Docker-контейнеры для PG, Redis, Mongo, ClickHouse. Пакет `tests/integration`, проверка реального SQL и сериализации. Команда `make test-integration`. |
-| — | `main` | Текущая основная ветка. |
+| 19 | `feature-swagger` | Swagger UI для REST API: аннотации swaggo в контроллерах, генерация `docs/` через `swag init`, UI на `/swagger/index.html`. Команда `make swagger`. |
 
-Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC → Kafka → ClickHouse → Mongo → юнит-тесты → моки → интеграционные тесты.
+Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC → Kafka → ClickHouse → Mongo → юнит-тесты → моки → интеграционные тесты → Swagger.
 
 ---
 
