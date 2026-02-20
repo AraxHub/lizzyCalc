@@ -20,7 +20,7 @@ DOWN_VOL_ARGS := $(if $(filter 1,$(DROP_VOLUMES)),-v,)
 .PHONY: backend-from-zero backend-app backend-down backend-build backend-up
 .PHONY: frontend-from-zero frontend-app frontend-down frontend-build frontend-up
 .PHONY: kafka-create-topic
-.PHONY: test test-v test-coverage test-run
+.PHONY: test test-v test-coverage test-run test-unit test-integration
 .PHONY: mocks
 
 help:
@@ -42,8 +42,10 @@ help:
 	@echo "  make kafka-create-topic — создать топик operations в Kafka"
 	@echo ""
 	@echo "Тесты:"
-	@echo "  make test               — запустить все тесты"
-	@echo "  make test-v             — тесты с verbose"
+	@echo "  make test               — запустить все тесты (юнит + интеграционные)"
+	@echo "  make test-unit          — только юнит-тесты (быстро, без Docker)"
+	@echo "  make test-integration   — только интеграционные (нужен Docker)"
+	@echo "  make test-v             — все тесты с verbose"
 	@echo "  make test-coverage      — тесты + HTML-отчёт о покрытии (coverage.html)"
 	@echo "  make test-run NAME=...  — запустить тест по имени (NAME=TestCacheKey)"
 	@echo "  make mocks              — сгенерировать моки (mockgen)"
@@ -103,11 +105,19 @@ kafka-create-topic:
 
 # --- Tests ---
 
-.PHONY: test test-v test-coverage test-run
+.PHONY: test test-v test-coverage test-run test-unit test-integration
 
-# Запустить все тесты
+# Запустить все тесты (юнит + интеграционные)
 test:
 	go test ./...
+
+# Только юнит-тесты (быстро, без Docker)
+test-unit:
+	go test ./... -short
+
+# Только интеграционные тесты (требуется Docker)
+test-integration:
+	go test ./tests/integration/... -v
 
 # Запустить тесты с verbose
 test-v:
@@ -116,6 +126,8 @@ test-v:
 # Тесты с покрытием + HTML-отчёт
 test-coverage:
 	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Отчёт: coverage.html"
 
 # Запустить конкретный тест по имени (usage: make test-run NAME=TestCacheKey)
 test-run:
