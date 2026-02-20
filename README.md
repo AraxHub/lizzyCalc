@@ -27,6 +27,7 @@
 | 11 | `feature-makefile` | Makefile для пересборки композников после смены ветки: `make backend`, `make frontend`, down/build/up, DROP_VOLUMES. |
 | 12 | `feature-grpc-api` | gRPC-сервер на отдельном порту (например 9090): тот же use case (Calculate, History), второй транспорт рядом с REST. Контракты и кодоген — в отдельном репо [AraxHub/calc-proto](https://github.com/AraxHub/calc-proto); lizzyCalc подтягивает модуль и реализует сервер. Вызовы из grpcurl/клиента. |
 | 13 | `feature-kafka-broker` | Интеграция с Kafka: после расчёта пишем в топик, консьюмер читает и логирует. Zookeeper + Kafka + Kafka UI в compose, топик operations, IProducer/ICalculatorUseCase.HandleOperationEvent. |
+| 14 | `feature-clickhouse-analytics` | Аналитика в ClickHouse: консьюмер пишет каждую операцию в колоночную БД (таблица default.operations_analytics), EnsureTable при старте, ClickHouse + CH-UI в compose, порт IOperationAnalytics. |
 | — | `main` | Текущая основная ветка. |
 
 Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC.
@@ -34,7 +35,6 @@
 ---
 
 ## TODO (планируемые ветки)
-- [ ] **feature-clickhouse-analytics** — аналитика в ClickHouse: запись операций/событий в колоночную БД из консюмера, хэндлер analytics для получения данных по агрегатам
 - [ ] **feature-mongo-storage** — хранилище операций в MongoDB (документная БД по коллекциям). Фича-флаг в конфиге: в зависимости от него используется либо PostgreSQL, либо Mongo (один интерфейс репозитория, два адаптера).
 - [ ] **feature-tests** — тесты: юнит-тесты (логика use case, домен), моки для портов (репозиторий, кэш), интеграционные тесты (API или слой инфраструктуры против реальной/тестовой БД).
 
