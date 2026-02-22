@@ -34,8 +34,9 @@
 | 17 | `feature-mock-tests` | Моки через mockgen: `//go:generate` директивы в портах, пакет `internal/mocks`, тесты бизнес-логики (Calculate, History) с мок-зависимостями. Команда `make mocks`. |
 | 18 | `feature-integration-tests` | Интеграционные тесты с testcontainers: Docker-контейнеры для PG, Redis, Mongo, ClickHouse. Пакет `tests/integration`, проверка реального SQL и сериализации. Команда `make test-integration`. |
 | 19 | `feature-swagger` | Swagger UI для REST API: аннотации swaggo в контроллерах, генерация `docs/` через `swag init`, UI на `/swagger/index.html`. Команда `make swagger`. |
+| 20 | `feature-grafana-prometheus` | Мониторинг: Prometheus (сбор метрик) + Grafana (визуализация). HTTP middleware для метрик (requests/sec, latency histogram, in-flight). Готовый дашборд LizzyCalc HTTP Metrics с RPS, p95 latency, error rate. Provisioning datasource и дашбордов из файлов. |
 
-Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC → Kafka → ClickHouse → Mongo → юнит-тесты → моки → интеграционные тесты → Swagger.
+Кратко маршрут: логика и «БД» в памяти → HTTP → объединение → Gin и версионирование → реальная БД → env → архитектура → MVP → фронт → кэш (Redis) → Makefile → gRPC → Kafka → ClickHouse → Mongo → юнит-тесты → моки → интеграционные тесты → Swagger → Prometheus + Grafana.
 
 ---
 
