@@ -459,6 +459,130 @@ func PrometheusMetrics(c *gin.Context) {
 
 Эндпоинт `/metrics` (system controller) отдаёт все накопленные метрики через `promhttp.Handler()`.
 
+#### Важно: gRPC метрики НЕ собираются
+
+Текущая реализация собирает метрики **только для HTTP**. gRPC-сервер (порт 9090) — это отдельный стек, и Gin middleware туда не доходит.
+
+```
+HTTP (Gin)  ──▸ PrometheusMetrics middleware ──▸ ✅ метрики есть
+gRPC        ──▸ нет interceptor'а            ──▸ ❌ метрики не собираются
+```
+
+Почему так:
+- HTTP использует Gin router с middleware-цепочкой
+- gRPC использует свой сервер с interceptor'ами (аналог middleware)
+- Это разные протоколы и разные серверы — код не переиспользуется
+
+Чтобы собирать gRPC метрики, нужно добавить `grpc.UnaryInterceptor` с аналогичной логикой (счётчик запросов, гистограмма latency). Пока этого нет — на дашборде видишь только HTTP-трафик.
+
+---
+
+### Как собирать метрики с баз данных и Kafka
+
+Метрики инфраструктуры (БД, брокеры) можно собирать **двумя способами**:
+
+#### Способ 1: Экспортеры (отдельные контейнеры)
+
+Экспортер — это отдельный сервис, который подключается к БД/брокеру, вытягивает внутренние метрики и отдаёт их в формате Prometheus.
+
+```
+┌─────────────┐     ┌──────────────────┐     ┌────────────┐
+│  PostgreSQL │◀────│ postgres_exporter│◀────│ Prometheus │
+└─────────────┘     └──────────────────┘     └────────────┘
+                           ▲
+                    отдельный контейнер,
+                    стучится в PG и отдаёт /metrics
+```
+
+Популярные экспортеры:
+
+| Сервис | Экспортер | Что отдаёт |
+|--------|-----------|------------|
+| PostgreSQL | `postgres_exporter` | connections, queries/sec, replication lag, table sizes |
+| Redis | `redis_exporter` | memory, keys, commands/sec, hit rate |
+| Kafka | `kafka_exporter` | consumer lag, partitions, brokers, topics |
+| ClickHouse | `clickhouse_exporter` | queries, merges, parts, memory |
+| MongoDB | `mongodb_exporter` | connections, operations, replication |
+
+Пример добавления в docker-compose:
+
+```yaml
+postgres-exporter:
+  image: prometheuscommunity/postgres-exporter
+  environment:
+    DATA_SOURCE_NAME: "postgresql://postgres:postgres@postgres:5432/lizzycalc?sslmode=disable"
+  ports:
+    - "9187:9187"
+
+redis-exporter:
+  image: oliver006/redis_exporter
+  environment:
+    REDIS_ADDR: "redis:6379"
+    REDIS_PASSWORD: "lizzycalc-redis"
+  ports:
+    - "9121:9121"
+```
+
+И добавить в `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+```
+
+**Плюсы**: метрики «изнутри» БД (replication lag, locks, buffer cache hit ratio).
+**Минусы**: дополнительные контейнеры, нужно следить за их здоровьем.
+
+#### Способ 2: Метрики из приложения (клиентские)
+
+Инструментируем код приложения — оборачиваем вызовы к БД и считаем latency/ошибки на стороне клиента.
+
+```go
+// Пример: метрики для PostgreSQL-запросов
+dbQueryDuration = promauto.NewHistogramVec(
+    prometheus.HistogramOpts{
+        Name:    "db_query_duration_seconds",
+        Help:    "Database query duration",
+        Buckets: prometheus.DefBuckets,
+    },
+    []string{"query_type"}, // select, insert, update
+)
+
+// Использование:
+start := time.Now()
+rows, err := db.Query("SELECT ...")
+dbQueryDuration.WithLabelValues("select").Observe(time.Since(start).Seconds())
+```
+
+Аналогично для Kafka:
+
+```go
+kafkaProduceDuration = promauto.NewHistogramVec(...)
+kafkaConsumeLatency = promauto.NewHistogramVec(...)
+kafkaMessagesProduced = promauto.NewCounterVec(...)
+```
+
+**Плюсы**: не нужны доп. контейнеры, видим latency «с точки зрения приложения».
+**Минусы**: не видим внутренности БД (память, репликацию, locks).
+
+#### Что выбрать?
+
+| Задача | Решение |
+|--------|---------|
+| «Почему запросы медленные?» | Клиентские метрики из приложения |
+| «Сколько памяти жрёт Redis?» | Экспортер |
+| «Какой consumer lag в Kafka?» | Экспортер |
+| «Как долго мы ждём ответа от PG?» | Клиентские метрики |
+| «Есть ли replication lag?» | Экспортер |
+
+**В проде обычно используют оба подхода**: экспортеры для инфраструктурных метрик + клиентские метрики для понимания latency с точки зрения приложения.
+
 ---
 
 ### Полезные PromQL-запросы
