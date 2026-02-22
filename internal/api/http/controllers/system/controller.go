@@ -7,6 +7,9 @@ import (
 	"lizzyCalc/internal/ports"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // Controller — системные маршруты: liveness, readiness, корень API.
@@ -24,6 +27,8 @@ func New(repo ports.IOperationRepository, log *slog.Logger) *Controller {
 func (c *Controller) RegisterRoutes(r *gin.Engine) {
 	r.GET("/liveness", c.live)
 	r.GET("/readyness", c.ready)
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 }
 
 // @Summary Проверка жизнеспособности

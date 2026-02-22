@@ -7,8 +7,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"lizzyCalc/internal/api/http/middlewares"
 )
 
@@ -53,8 +51,7 @@ func (s *Server) Start(ctx context.Context) error {
 		AllowCredentials: false,
 	}))
 	r.Use(middlewares.RequestLogger)
-
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.Use(middlewares.PrometheusMetrics)
 
 	for _, c := range s.controllers {
 		c.RegisterRoutes(r)
